@@ -1,0 +1,18 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.Menu" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    </style>
+
+    <style name="Theme.Menu" parent="Base.Theme.Menu" />
+
+    <!-- Splash Screen Theme -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Set the background to black -->
+        <item name="windowSplashScreenBackground">@android:color/black</item>
+        <!-- No icon -->
+        <item name="windowSplashScreenAnimatedIcon">@null</item>
+        <item name="postSplashScreenTheme">@style/Theme.Menu</item>
+    </style>
+</resources>
