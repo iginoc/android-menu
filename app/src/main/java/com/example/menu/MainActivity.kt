@@ -3,20 +3,24 @@ package com.example.menu
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -65,16 +69,39 @@ class MainActivity : AppCompatActivity() {
         setupClickListeners()
         loadIconDrawables()
         initCarImage()
+        checkDefaultLauncher()
+    }
+
+    private fun checkDefaultLauncher() {
+        if (!isDefaultLauncher()) {
+            AlertDialog.Builder(this)
+                .setTitle("Launcher Predefinito")
+                .setMessage("Vuoi impostare questa app come launcher predefinito?")
+                .setPositiveButton("Sì") { _, _ ->
+                    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        Intent(Settings.ACTION_HOME_SETTINGS)
+                    } else {
+                        Intent(Settings.ACTION_SETTINGS)
+                    }
+                    startActivity(intent)
+                }
+                .setNegativeButton("No", null)
+                .show()
+        }
+    }
+
+    private fun isDefaultLauncher(): Boolean {
+        val intent = Intent(Intent.ACTION_MAIN)
+        intent.addCategory(Intent.CATEGORY_HOME)
+        val resolveInfo = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        return resolveInfo != null && packageName == resolveInfo.activityInfo.packageName
     }
 
     private fun setupClickListeners() {
         val carImageView = findViewById<ImageView>(R.id.car_image)
         carImageView.setOnClickListener { finishAndRemoveTask() }
         carImageView.setOnLongClickListener {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "image/*"
-            }
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "image/*" }
             pickImageLauncher.launch(intent)
             true
         }
@@ -91,7 +118,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getEffectiveCategory(appInfo: ApplicationInfo): Int {
-        // Ritorna la categoria personalizzata se esiste, altrimenti quella di sistema
         return categoryPrefs.getInt("app_cat_${appInfo.packageName}", if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) appInfo.category else -1)
     }
 
@@ -100,16 +126,16 @@ class MainActivity : AppCompatActivity() {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.apps_list_dialog)
         val recyclerView = dialog.findViewById<RecyclerView>(R.id.apps_recycler_view)
-        recyclerView.layoutManager = LinearLayoutManager(this)
+        val layoutManager = LinearLayoutManager(this)
+        recyclerView.layoutManager = layoutManager
+        val quickLinksContainer = dialog.findViewById<LinearLayout>(R.id.category_quick_links)
 
         val mainIntent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
         var apps = packageManager.queryIntentActivities(mainIntent, 0)
 
-        if (filterCategory != null) {
-            apps = apps.filter { getEffectiveCategory(it.activityInfo.applicationInfo) == filterCategory }
-        }
-
+        val categoryPositions = mutableMapOf<Int, Int>()
         val groupedApps = mutableListOf<AppListItem>()
+
         if (filterCategory == null) {
             val categoriesMap = mutableMapOf<Int, MutableList<ResolveInfo>>()
             for (app in apps) {
@@ -117,15 +143,31 @@ class MainActivity : AppCompatActivity() {
                 categoriesMap.getOrPut(cat) { mutableListOf() }.add(app)
             }
             categoriesMap.keys.sorted().forEach { catId ->
+                categoryPositions[catId] = groupedApps.size
                 groupedApps.add(AppListItem.Header(getCategoryName(catId), catId))
                 categoriesMap[catId]!!.sortBy { it.loadLabel(packageManager).toString().lowercase() }
                 for (app in categoriesMap[catId]!!) groupedApps.add(AppListItem.App(app))
             }
         } else {
+            apps = apps.filter { getEffectiveCategory(it.activityInfo.applicationInfo) == filterCategory }
             apps.sortBy { it.loadLabel(packageManager).toString().lowercase() }
             apps.forEach { groupedApps.add(AppListItem.App(it)) }
+            quickLinksContainer.visibility = View.GONE
         }
 
+        if (filterCategory == null) {
+            categoryPositions.keys.sorted().forEach { catId ->
+                val textView = TextView(this).apply {
+                    text = getCategoryName(catId)
+                    setPadding(24, 12, 24, 12)
+                    setOnClickListener { 
+                        layoutManager.scrollToPositionWithOffset(categoryPositions[catId] ?: 0, 0)
+                    }
+                }
+                quickLinksContainer.addView(textView)
+            }
+        }
+        
         recyclerView.adapter = AppsAdapter(groupedApps) { resolveInfo ->
             if (isManagementMode) {
                 showMoveToCategoryDialog(resolveInfo) { dialog.dismiss(); showAppsList(filterCategory, true) }

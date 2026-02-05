@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@android:color/white">
+    android:background="?android:attr/colorBackground">
 
     <TextView
         android:layout_width="match_parent"
@@ -13,7 +13,7 @@
         android:textStyle="bold"
         android:padding="16dp"
         android:gravity="center"
-        android:textColor="@android:color/black" />
+        android:textColor="?android:attr/textColorPrimary" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/categories_recycler_view"

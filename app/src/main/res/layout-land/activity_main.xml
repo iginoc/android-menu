@@ -22,12 +22,13 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/car_image"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="fitCenter"
+        android:layout_width="250dp"
+        android:layout_height="250dp"
+        android:scaleType="centerCrop"
         android:src="@drawable/up"
+        app:shapeAppearanceOverlay="@style/CircleAppearance"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -39,7 +40,7 @@
         android:layout_height="50dp"
         android:src="@drawable/wathsapp"
         app:layout_constraintCircle="@id/car_image"
-        app:layout_constraintCircleRadius="140dp"
+        app:layout_constraintCircleRadius="180dp"
         app:layout_constraintCircleAngle="0"
         tools:ignore="MissingConstraints" />
 
@@ -69,7 +70,7 @@
         android:layout_height="50dp"
         android:src="@drawable/maps"
         app:layout_constraintCircle="@id/car_image"
-        app:layout_constraintCircleRadius="140dp"
+        app:layout_constraintCircleRadius="180dp"
         app:layout_constraintCircleAngle="180"
         tools:ignore="MissingConstraints" />
 
