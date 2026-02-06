@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="300dp"
+    android:height="300dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- Wedge 1: Center 0° (330° to 30°) -->
+    <path
+        android:fillColor="#E53935"
+        android:pathData="M 50,50 L 25,6.7 A 50,50 0 0 1 75,6.7 Z" />
+    <!-- Wedge 2: Center 60° (30° to 90°) -->
+    <path
+        android:fillColor="#FB8C00"
+        android:pathData="M 50,50 L 75,6.7 A 50,50 0 0 1 100,50 Z" />
+    <!-- Wedge 3: Center 120° (90° to 150°) -->
+    <path
+        android:fillColor="#FDD835"
+        android:pathData="M 50,50 L 100,50 A 50,50 0 0 1 75,93.3 Z" />
+    <!-- Wedge 4: Center 180° (150° to 210°) -->
+    <path
+        android:fillColor="#43A047"
+        android:pathData="M 50,50 L 75,93.3 A 50,50 0 0 1 25,93.3 Z" />
+    <!-- Wedge 5: Center 240° (210° to 270°) -->
+    <path
+        android:fillColor="#1E88E5"
+        android:pathData="M 50,50 L 25,93.3 A 50,50 0 0 1 0,50 Z" />
+    <!-- Wedge 6: Center 300° (270° to 330°) -->
+    <path
+        android:fillColor="#8E24AA"
+        android:pathData="M 50,50 L 0,50 A 50,50 0 0 1 25,6.7 Z" />
+</vector>

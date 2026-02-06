@@ -3,7 +3,6 @@ package com.example.menu
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.ActivityNotFoundException
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -41,6 +40,12 @@ class MainActivity : AppCompatActivity() {
     private val iconViews by lazy {
         listOf<ImageView>(findViewById(R.id.icon_1), findViewById(R.id.icon_2), findViewById(R.id.icon_3), findViewById(R.id.icon_4))
     }
+    private val wedgeViews by lazy {
+        listOf<WedgeImageView>(
+            findViewById(R.id.wedge_1), findViewById(R.id.wedge_2), findViewById(R.id.wedge_3),
+            findViewById(R.id.wedge_4), findViewById(R.id.wedge_5), findViewById(R.id.wedge_6)
+        )
+    }
 
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -69,7 +74,32 @@ class MainActivity : AppCompatActivity() {
         setupClickListeners()
         loadIconDrawables()
         initCarImage()
+        setupWedges()
         checkDefaultLauncher()
+    }
+
+    private fun setupWedges() {
+        // Correzione angoli: ConstraintLayout 0° è Canvas 270° (-90°).
+        // Lo spicchio è largo 60°, quindi per centrarlo dobbiamo togliere altri 30°.
+        // 270 - 30 = 240 (o -120).
+        val startAngles = listOf(-120f, -60f, 0f, 60f, 120f, 180f)
+        
+        for (i in wedgeViews.indices) {
+            val wedge = wedgeViews[i]
+            wedge.startAngle = startAngles[i]
+            
+            val pkg = when(i) {
+                in 0..3 -> prefs.getString(iconKeys[i], defaultPackages[i])!!
+                4 -> "com.android.settings"
+                else -> "com.android.systemui"
+            }
+            
+            try {
+                wedge.setImageDrawable(packageManager.getApplicationIcon(pkg))
+            } catch (e: Exception) {
+                wedge.setImageResource(R.drawable.icona)
+            }
+        }
     }
 
     private fun checkDefaultLauncher() {
@@ -78,11 +108,7 @@ class MainActivity : AppCompatActivity() {
                 .setTitle("Launcher Predefinito")
                 .setMessage("Vuoi impostare questa app come launcher predefinito?")
                 .setPositiveButton("Sì") { _, _ ->
-                    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        Intent(Settings.ACTION_HOME_SETTINGS)
-                    } else {
-                        Intent(Settings.ACTION_SETTINGS)
-                    }
+                    val intent = Intent(Settings.ACTION_HOME_SETTINGS)
                     startActivity(intent)
                 }
                 .setNegativeButton("No", null)
@@ -91,8 +117,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isDefaultLauncher(): Boolean {
-        val intent = Intent(Intent.ACTION_MAIN)
-        intent.addCategory(Intent.CATEGORY_HOME)
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         val resolveInfo = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
         return resolveInfo != null && packageName == resolveInfo.activityInfo.packageName
     }
@@ -110,7 +135,7 @@ class MainActivity : AppCompatActivity() {
             val iconView = iconViews[i]
             val key = iconKeys[i]
             iconView.setOnClickListener { launchApp(prefs.getString(key, defaultPackages[i])!!, "App") }
-            iconView.setOnLongClickListener { showAppPickerFor(iconView, key); true }
+            iconView.setOnLongClickListener { showAppPickerFor(i, key); true }
         }
 
         findViewById<ImageView>(R.id.icon_5).setOnClickListener { showAppsList(isManagementMode = false) }
@@ -122,8 +147,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAppsList(filterCategory: Int? = null, isManagementMode: Boolean = false) {
-        val dialog = Dialog(this, android.R.style.Theme_Light_NoTitleBar_Fullscreen)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        val dialog = Dialog(this, android.R.style.Theme_NoTitleBar_Fullscreen)
         dialog.setContentView(R.layout.apps_list_dialog)
         val recyclerView = dialog.findViewById<RecyclerView>(R.id.apps_recycler_view)
         val layoutManager = LinearLayoutManager(this)
@@ -160,6 +184,7 @@ class MainActivity : AppCompatActivity() {
                 val textView = TextView(this).apply {
                     text = getCategoryName(catId)
                     setPadding(24, 12, 24, 12)
+                    setTextColor(resources.getColor(android.R.color.darker_gray, null))
                     setOnClickListener { 
                         layoutManager.scrollToPositionWithOffset(categoryPositions[catId] ?: 0, 0)
                     }
@@ -180,8 +205,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showCategoriesList() {
-        val dialog = Dialog(this, android.R.style.Theme_Light_NoTitleBar_Fullscreen)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        val dialog = Dialog(this, android.R.style.Theme_NoTitleBar_Fullscreen)
         dialog.setContentView(R.layout.categories_list_dialog)
         val recyclerView = dialog.findViewById<RecyclerView>(R.id.categories_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -267,22 +291,33 @@ class MainActivity : AppCompatActivity() {
     private fun loadIconDrawables() {
         for (i in iconKeys.indices) {
             val pkg = prefs.getString(iconKeys[i], defaultPackages[i])!!
-            try { iconViews[i].setImageDrawable(packageManager.getApplicationIcon(pkg)) } 
-            catch (e: Exception) { iconViews[i].setImageResource(R.drawable.icona) }
+            try { 
+                val icon = packageManager.getApplicationIcon(pkg)
+                iconViews[i].setImageDrawable(icon)
+            } catch (e: Exception) { 
+                iconViews[i].setImageResource(R.drawable.icona) 
+            }
         }
     }
 
-    private fun showAppPickerFor(iconView: ImageView, key: String) {
-        val dialog = Dialog(this, android.R.style.Theme_Light_NoTitleBar_Fullscreen)
+    private fun showAppPickerFor(index: Int, key: String) {
+        val dialog = Dialog(this, android.R.style.Theme_NoTitleBar_Fullscreen)
         dialog.setContentView(R.layout.apps_list_dialog)
         val recyclerView = dialog.findViewById<RecyclerView>(R.id.apps_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(this)
         val apps = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
         apps.sortBy { it.loadLabel(packageManager).toString() }
         recyclerView.adapter = AppsAdapter(apps.map { AppListItem.App(it) }) { resolveInfo ->
-            prefs.edit().putString(key, resolveInfo.activityInfo.packageName).apply()
-            try { iconView.setImageDrawable(packageManager.getApplicationIcon(resolveInfo.activityInfo.packageName)) } 
-            catch (e: Exception) { iconView.setImageResource(R.drawable.icona) }
+            val pkg = resolveInfo.activityInfo.packageName
+            prefs.edit().putString(key, pkg).apply()
+            try { 
+                val icon = packageManager.getApplicationIcon(pkg)
+                iconViews[index].setImageDrawable(icon)
+                wedgeViews[index].setImageDrawable(icon)
+            } catch (e: Exception) { 
+                iconViews[index].setImageResource(R.drawable.icona)
+                wedgeViews[index].setImageResource(R.drawable.icona)
+            }
             dialog.dismiss()
         }
         dialog.show()
