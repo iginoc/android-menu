@@ -22,12 +22,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Wedge Backgrounds -->
+    <!-- Wedge Backgrounds as Buttons -->
     <com.example.menu.WedgeImageView
         android:id="@+id/wedge_1"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="centerCrop"
+        android:clickable="true"
+        android:focusable="true"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -39,6 +41,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="centerCrop"
+        android:clickable="true"
+        android:focusable="true"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -50,6 +54,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="centerCrop"
+        android:clickable="true"
+        android:focusable="true"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -61,6 +67,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="centerCrop"
+        android:clickable="true"
+        android:focusable="true"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -72,6 +80,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="centerCrop"
+        android:clickable="true"
+        android:focusable="true"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -83,83 +93,22 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="centerCrop"
+        android:clickable="true"
+        android:focusable="true"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/car_image"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:scaleType="centerCrop"
-        android:src="@drawable/up"
-        app:shapeAppearanceOverlay="@style/CircleAppearance"
+    <!-- Centered helper for constraintCircle -->
+    <View
+        android:id="@+id/center_helper"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
-    <!-- Icone riposizionate per essere al centro della nuova fascia più larga -->
-    <ImageView
-        android:id="@+id/icon_1"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:src="@drawable/wathsapp"
-        app:layout_constraintCircle="@id/car_image"
-        app:layout_constraintCircleRadius="140dp"
-        app:layout_constraintCircleAngle="0"
-        tools:ignore="MissingConstraints" />
-
-    <ImageView
-        android:id="@+id/icon_2"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:src="@drawable/mapsmore"
-        app:layout_constraintCircle="@id/car_image"
-        app:layout_constraintCircleRadius="140dp"
-        app:layout_constraintCircleAngle="60"
-        tools:ignore="MissingConstraints" />
-
-    <ImageView
-        android:id="@+id/icon_3"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:src="@drawable/torque"
-        app:layout_constraintCircle="@id/car_image"
-        app:layout_constraintCircleRadius="140dp"
-        app:layout_constraintCircleAngle="120"
-        tools:ignore="MissingConstraints" />
-
-    <ImageView
-        android:id="@+id/icon_4"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:src="@drawable/maps"
-        app:layout_constraintCircle="@id/car_image"
-        app:layout_constraintCircleRadius="140dp"
-        app:layout_constraintCircleAngle="180"
-        tools:ignore="MissingConstraints" />
-
-    <ImageView
-        android:id="@+id/icon_5"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:src="@drawable/icona"
-        app:layout_constraintCircle="@id/car_image"
-        app:layout_constraintCircleRadius="140dp"
-        app:layout_constraintCircleAngle="240"
-        tools:ignore="MissingConstraints" />
-
-    <ImageView
-        android:id="@+id/icon_6"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:src="@drawable/icona"
-        app:layout_constraintCircle="@id/car_image"
-        app:layout_constraintCircleRadius="140dp"
-        app:layout_constraintCircleAngle="300"
-        tools:ignore="MissingConstraints" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

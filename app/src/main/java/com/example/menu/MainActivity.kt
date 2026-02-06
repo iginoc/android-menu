@@ -13,7 +13,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.GestureDetector
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -28,18 +30,30 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: SharedPreferences
     private lateinit var categoryPrefs: SharedPreferences
-    private val iconKeys = listOf("icon_1_pkg", "icon_2_pkg", "icon_3_pkg", "icon_4_pkg")
-    private val defaultPackages = listOf("com.whatsapp", "de.volkswagen.mapsandmore", "org.prowl.torque", "com.google.android.apps.maps")
-    private val iconViews by lazy {
-        listOf<ImageView>(findViewById(R.id.icon_1), findViewById(R.id.icon_2), findViewById(R.id.icon_3), findViewById(R.id.icon_4))
-    }
+    
+    // Estese a 6 tasti
+    private val iconKeys = listOf("icon_1_pkg", "icon_2_pkg", "icon_3_pkg", "icon_4_pkg", "icon_5_pkg", "icon_6_pkg")
+    private val defaultPackages = listOf(
+        "com.whatsapp", 
+        "de.volkswagen.mapsandmore", 
+        "org.prowl.torque", 
+        "com.android.settings",
+        "com.android.settings", // Default per tasto 5
+        "com.android.settings"  // Default per tasto 6
+    )
+    
     private val wedgeViews by lazy {
         listOf<WedgeImageView>(
             findViewById(R.id.wedge_1), findViewById(R.id.wedge_2), findViewById(R.id.wedge_3),
@@ -47,15 +61,10 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            result.data?.data?.let { uri ->
-                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                prefs.edit().putString("car_image_uri", uri.toString()).apply()
-                loadCarImage(uri)
-            }
-        }
-    }
+    private lateinit var gestureDetector: GestureDetector
+    
+    private var allInstalledApps: List<ResolveInfo> = emptyList()
+    private var isAppCacheReady = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -71,33 +80,68 @@ class MainActivity : AppCompatActivity() {
         prefs = getSharedPreferences("app_shortcuts", Context.MODE_PRIVATE)
         categoryPrefs = getSharedPreferences("custom_categories", Context.MODE_PRIVATE)
 
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+                if (e1 != null && e1.y - e2.y > 100 && abs(velocityY) > 100) {
+                    showAppsList(isManagementMode = false)
+                    return true
+                }
+                return false
+            }
+        })
+
+        loadAppsToCache()
         setupClickListeners()
-        loadIconDrawables()
-        initCarImage()
         setupWedges()
         checkDefaultLauncher()
     }
 
+    private fun loadAppsToCache() {
+        lifecycleScope.launch(Dispatchers.Default) {
+            val mainIntent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
+            allInstalledApps = packageManager.queryIntentActivities(mainIntent, 0)
+            isAppCacheReady = true
+        }
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        return gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
+    }
+
     private fun setupWedges() {
-        // Correzione angoli: ConstraintLayout 0° è Canvas 270° (-90°).
-        // Lo spicchio è largo 60°, quindi per centrarlo dobbiamo togliere altri 30°.
-        // 270 - 30 = 240 (o -120).
         val startAngles = listOf(-120f, -60f, 0f, 60f, 120f, 180f)
         
         for (i in wedgeViews.indices) {
             val wedge = wedgeViews[i]
             wedge.startAngle = startAngles[i]
             
-            val pkg = when(i) {
-                in 0..3 -> prefs.getString(iconKeys[i], defaultPackages[i])!!
-                4 -> "com.android.settings"
-                else -> "com.android.systemui"
-            }
+            val pkg = prefs.getString(iconKeys[i], defaultPackages[i])!!
             
             try {
                 wedge.setImageDrawable(packageManager.getApplicationIcon(pkg))
             } catch (e: Exception) {
                 wedge.setImageResource(R.drawable.icona)
+            }
+        }
+    }
+
+    private fun setupClickListeners() {
+        findViewById<View>(R.id.center_helper).setOnClickListener {
+            finishAndRemoveTask()
+        }
+
+        // Ora tutti e 6 i tasti gestiscono l'avvio delle app e la personalizzazione
+        for (i in wedgeViews.indices) {
+            val wedge = wedgeViews[i]
+            val key = iconKeys[i]
+            
+            wedge.setOnClickListener { 
+                val packageName = prefs.getString(key, defaultPackages[i])!!
+                launchApp(packageName, "App") 
+            }
+            wedge.setOnLongClickListener { 
+                showAppPickerFor(i, key)
+                true 
             }
         }
     }
@@ -108,8 +152,7 @@ class MainActivity : AppCompatActivity() {
                 .setTitle("Launcher Predefinito")
                 .setMessage("Vuoi impostare questa app come launcher predefinito?")
                 .setPositiveButton("Sì") { _, _ ->
-                    val intent = Intent(Settings.ACTION_HOME_SETTINGS)
-                    startActivity(intent)
+                    startActivity(Intent(Settings.ACTION_HOME_SETTINGS))
                 }
                 .setNegativeButton("No", null)
                 .show()
@@ -120,26 +163,6 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         val resolveInfo = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
         return resolveInfo != null && packageName == resolveInfo.activityInfo.packageName
-    }
-
-    private fun setupClickListeners() {
-        val carImageView = findViewById<ImageView>(R.id.car_image)
-        carImageView.setOnClickListener { finishAndRemoveTask() }
-        carImageView.setOnLongClickListener {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "image/*" }
-            pickImageLauncher.launch(intent)
-            true
-        }
-
-        for (i in iconKeys.indices) {
-            val iconView = iconViews[i]
-            val key = iconKeys[i]
-            iconView.setOnClickListener { launchApp(prefs.getString(key, defaultPackages[i])!!, "App") }
-            iconView.setOnLongClickListener { showAppPickerFor(i, key); true }
-        }
-
-        findViewById<ImageView>(R.id.icon_5).setOnClickListener { showAppsList(isManagementMode = false) }
-        findViewById<ImageView>(R.id.icon_6).setOnClickListener { showCategoriesList() }
     }
 
     private fun getEffectiveCategory(appInfo: ApplicationInfo): Int {
@@ -154,15 +177,22 @@ class MainActivity : AppCompatActivity() {
         recyclerView.layoutManager = layoutManager
         val quickLinksContainer = dialog.findViewById<LinearLayout>(R.id.category_quick_links)
 
-        val mainIntent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
-        var apps = packageManager.queryIntentActivities(mainIntent, 0)
+        val apps = if (isAppCacheReady) allInstalledApps else {
+            val mainIntent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
+            packageManager.queryIntentActivities(mainIntent, 0)
+        }
+
+        var filteredApps = apps
+        if (filterCategory != null) {
+            filteredApps = apps.filter { getEffectiveCategory(it.activityInfo.applicationInfo) == filterCategory }
+        }
 
         val categoryPositions = mutableMapOf<Int, Int>()
         val groupedApps = mutableListOf<AppListItem>()
 
         if (filterCategory == null) {
             val categoriesMap = mutableMapOf<Int, MutableList<ResolveInfo>>()
-            for (app in apps) {
+            for (app in filteredApps) {
                 val cat = getEffectiveCategory(app.activityInfo.applicationInfo)
                 categoriesMap.getOrPut(cat) { mutableListOf() }.add(app)
             }
@@ -173,9 +203,8 @@ class MainActivity : AppCompatActivity() {
                 for (app in categoriesMap[catId]!!) groupedApps.add(AppListItem.App(app))
             }
         } else {
-            apps = apps.filter { getEffectiveCategory(it.activityInfo.applicationInfo) == filterCategory }
-            apps.sortBy { it.loadLabel(packageManager).toString().lowercase() }
-            apps.forEach { groupedApps.add(AppListItem.App(it)) }
+            val sortedFiltered = filteredApps.sortedBy { it.loadLabel(packageManager).toString().lowercase() }
+            sortedFiltered.forEach { groupedApps.add(AppListItem.App(it)) }
             quickLinksContainer.visibility = View.GONE
         }
 
@@ -191,6 +220,17 @@ class MainActivity : AppCompatActivity() {
                 }
                 quickLinksContainer.addView(textView)
             }
+            
+            val settingsView = TextView(this).apply {
+                text = "Impostazioni"
+                setPadding(24, 12, 24, 12)
+                setTextColor(resources.getColor(android.R.color.holo_blue_dark, null))
+                setOnClickListener {
+                    dialog.dismiss()
+                    showCategoriesList()
+                }
+            }
+            quickLinksContainer.addView(settingsView)
         }
         
         recyclerView.adapter = AppsAdapter(groupedApps) { resolveInfo ->
@@ -210,8 +250,11 @@ class MainActivity : AppCompatActivity() {
         val recyclerView = dialog.findViewById<RecyclerView>(R.id.categories_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        val mainIntent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
-        val apps = packageManager.queryIntentActivities(mainIntent, 0)
+        val apps = if (isAppCacheReady) allInstalledApps else {
+            val mainIntent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
+            packageManager.queryIntentActivities(mainIntent, 0)
+        }
+        
         val categoriesSet = apps.map { getEffectiveCategory(it.activityInfo.applicationInfo) }.toSet()
         val sortedCategories = categoriesSet.toList().sorted()
 
@@ -280,22 +323,14 @@ class MainActivity : AppCompatActivity() {
         } else Toast.makeText(this, "$appName non installato", Toast.LENGTH_SHORT).show()
     }
 
-    private fun initCarImage() {
-        prefs.getString("car_image_uri", null)?.let { try { loadCarImage(Uri.parse(it)) } catch (e: Exception) {} }
-    }
-
-    private fun loadCarImage(uri: Uri) {
-        findViewById<ImageView>(R.id.car_image).setImageURI(uri)
-    }
-
     private fun loadIconDrawables() {
         for (i in iconKeys.indices) {
             val pkg = prefs.getString(iconKeys[i], defaultPackages[i])!!
             try { 
                 val icon = packageManager.getApplicationIcon(pkg)
-                iconViews[i].setImageDrawable(icon)
+                wedgeViews[i].setImageDrawable(icon)
             } catch (e: Exception) { 
-                iconViews[i].setImageResource(R.drawable.icona) 
+                wedgeViews[i].setImageResource(R.drawable.icona) 
             }
         }
     }
@@ -305,17 +340,21 @@ class MainActivity : AppCompatActivity() {
         dialog.setContentView(R.layout.apps_list_dialog)
         val recyclerView = dialog.findViewById<RecyclerView>(R.id.apps_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(this)
-        val apps = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
-        apps.sortBy { it.loadLabel(packageManager).toString() }
-        recyclerView.adapter = AppsAdapter(apps.map { AppListItem.App(it) }) { resolveInfo ->
+        
+        val apps = if (isAppCacheReady) allInstalledApps else {
+            val mainIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            packageManager.queryIntentActivities(mainIntent, 0)
+        }
+        
+        val sortedApps = apps.sortedBy { it.loadLabel(packageManager).toString() }
+        
+        recyclerView.adapter = AppsAdapter(sortedApps.map { AppListItem.App(it) }) { resolveInfo ->
             val pkg = resolveInfo.activityInfo.packageName
             prefs.edit().putString(key, pkg).apply()
             try { 
                 val icon = packageManager.getApplicationIcon(pkg)
-                iconViews[index].setImageDrawable(icon)
                 wedgeViews[index].setImageDrawable(icon)
             } catch (e: Exception) { 
-                iconViews[index].setImageResource(R.drawable.icona)
                 wedgeViews[index].setImageResource(R.drawable.icona)
             }
             dialog.dismiss()
