@@ -8,6 +8,16 @@
     android:background="@android:color/black"
     tools:context=".MainActivity">
 
+    <!-- Drawing overlay spostato nello sfondo (prima degli altri elementi) -->
+    <com.example.menu.DrawingView
+        android:id="@+id/drawing_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <TextClock
         android:id="@+id/clock"
         android:layout_width="wrap_content"
@@ -22,7 +32,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Wedge Backgrounds as Buttons -->
     <com.example.menu.WedgeImageView
         android:id="@+id/wedge_1"
         android:layout_width="0dp"
@@ -101,7 +110,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Centered helper for constraintCircle -->
     <View
         android:id="@+id/center_helper"
         android:layout_width="1dp"
@@ -110,15 +118,5 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
-    <!-- Drawing overlay -->
-    <com.example.menu.DrawingView
-        android:id="@+id/drawing_view"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

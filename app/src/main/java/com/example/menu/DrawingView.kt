@@ -9,6 +9,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import com.google.mlkit.vision.digitalink.Ink
+import kotlin.math.sqrt
 
 class DrawingView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -33,13 +34,35 @@ class DrawingView @JvmOverloads constructor(
         canvas.drawPath(path, paint)
     }
 
+    override fun performClick(): Boolean {
+        return super.performClick()
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val x = event.x
         val y = event.y
         val t = System.currentTimeMillis()
 
+        val centerX = width / 2f
+        val centerY = height / 2f
+        val distance = sqrt(((x - centerX) * (x - centerX) + (y - centerY) * (y - centerY)).toDouble())
+        
+        // Area pulsanti (centrale)
+        val buttonAreaRadius = 150 * resources.displayMetrics.density
+        
+        // Area Swipe Down (superiore, sopra l'orologio)
+        val topThreshold = height * 0.15
+
+        if (event.action == MotionEvent.ACTION_DOWN) {
+            // Se tocchi in alto o al centro, lascia passare il tocco agli altri componenti
+            if (distance < buttonAreaRadius || y < topThreshold) {
+                return false
+            }
+        }
+
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                performClick()
                 path.moveTo(x, y)
                 strokeBuilder = Ink.Stroke.builder()
                 strokeBuilder.addPoint(Ink.Point.create(x, y, t))
@@ -54,7 +77,6 @@ class DrawingView @JvmOverloads constructor(
                 inkBuilder.addStroke(strokeBuilder.build())
                 onStrokeFinished?.invoke(inkBuilder.build())
                 
-                // Pulisce dopo un breve ritardo per permettere il riconoscimento
                 postDelayed({
                     path.reset()
                     inkBuilder = Ink.builder()

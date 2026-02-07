@@ -36,7 +36,7 @@ android {
         jvmTarget = "11"
     }
     
-    // Aggiunta per il supporto ai dispositivi con page size di 16 KB
+    // Supporto obbligatorio per dispositivi con page size di 16 KB (Pixel 8/9 con Android 15+)
     packaging {
         jniLibs {
             useLegacyPackaging = true
@@ -51,7 +51,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation("androidx.core:core-splashscreen:1.0.1")
-    // Aggiornato ML Kit alla versione 19.0.0 per supporto 16 KB
+    // Versione aggiornata per compatibilità 16KB
     implementation("com.google.mlkit:digital-ink-recognition:19.0.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

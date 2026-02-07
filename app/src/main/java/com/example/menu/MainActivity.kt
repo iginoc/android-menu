@@ -95,8 +95,10 @@ class MainActivity : AppCompatActivity() {
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
                 if (e1 != null) {
                     val screenHeight = resources.displayMetrics.heightPixels
-                    val bottomThreshold = screenHeight * 0.9
-                    if (e1.y > bottomThreshold && e1.y - e2.y > 100 && abs(velocityY) > 100) {
+                    // Lo swipe deve partire dall'ALTO (primo 15% dello schermo, sopra l'orologio)
+                    val topThreshold = screenHeight * 0.15
+                    
+                    if (e1.y < topThreshold && e2.y - e1.y > 100 && abs(velocityY) > 100) {
                         showAppsList(isManagementMode = false)
                         return true
                     }

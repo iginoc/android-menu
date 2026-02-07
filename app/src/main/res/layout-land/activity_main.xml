@@ -8,6 +8,16 @@
     android:background="@android:color/black"
     tools:context=".MainActivity">
 
+    <!-- Drawing overlay spostato nello sfondo -->
+    <com.example.menu.DrawingView
+        android:id="@+id/drawing_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <TextClock
         android:id="@+id/clock"
         android:layout_width="wrap_content"
