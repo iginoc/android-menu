@@ -1,325 +1,191 @@
 package com.example.menu
 
-import android.app.AlertDialog
-import android.app.Dialog
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.content.SharedPreferences
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
-import android.os.Build
-import android.os.Bundle
+import android.app.*
+import android.content.*
+import android.content.pm.*
+import android.graphics.Color
+import android.os.*
 import android.provider.Settings
-import android.view.GestureDetector
-import android.view.LayoutInflater
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewGroup
-import android.view.Window
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.Toast
+import android.view.*
+import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlin.math.abs
+import androidx.recyclerview.widget.*
+import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
-
     private lateinit var prefs: SharedPreferences
-    private lateinit var categoryPrefs: SharedPreferences
-    private val iconKeys = (1..12).map { "icon_${it}_pkg" }
-    private val defaultPackages = listOf(
-        "com.whatsapp", "de.volkswagen.mapsandmore", "org.prowl.torque", "com.android.settings", "com.android.settings", "com.android.settings",
-        "com.android.chrome", "com.google.android.youtube", "com.google.android.apps.maps", "com.android.calendar", "com.android.calculator2", "com.android.deskclock"
-    )
-    
-    private val wedgeViews by lazy {
-        (1..12).map { id -> findViewById<WedgeImageView>(resources.getIdentifier("wedge_$id", "id", packageName)) }
-    }
-
-    private lateinit var gestureDetector: GestureDetector
-    private var allInstalledApps: List<ResolveInfo> = emptyList()
-    private var isAppCacheReady = false
+    private lateinit var catPrefs: SharedPreferences
+    private val keys = (1..12).map { "icon_${it}_pkg" }
+    private val wedges = mutableListOf<WedgeImageView>()
+    private var allApps: List<ResolveInfo> = emptyList()
+    private var cacheReady = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, i ->
+            val s = i.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(s.left, s.top, s.right, s.bottom); i
         }
-
-        prefs = getSharedPreferences("app_shortcuts", Context.MODE_PRIVATE)
-        categoryPrefs = getSharedPreferences("custom_categories", Context.MODE_PRIVATE)
-
-        setupGestureDetector()
-        loadAppsToCache()
-        setupClickListeners()
-        setupWedges()
-        checkDefaultLauncher()
+        prefs = getSharedPreferences("app_shortcuts", MODE_PRIVATE)
+        catPrefs = getSharedPreferences("custom_categories", MODE_PRIVATE)
+        val ids = listOf(R.id.wedge_1, R.id.wedge_2, R.id.wedge_3, R.id.wedge_4, R.id.wedge_5, R.id.wedge_6,
+                         R.id.wedge_7, R.id.wedge_8, R.id.wedge_9, R.id.wedge_10, R.id.wedge_11, R.id.wedge_12)
+        for (id in ids) findViewById<WedgeImageView>(id)?.let { wedges.add(it) }
+        findViewById<View>(R.id.center_helper)?.setOnClickListener { finishAndRemoveTask() }
+        loadData()
+        checkLauncher()
     }
 
-    private fun setupGestureDetector() {
-        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
-                if (e1 != null) {
-                    val screenHeight = resources.displayMetrics.heightPixels
-                    val topThreshold = screenHeight * 0.15
-                    if (e1.y < topThreshold && e2.y - e1.y > 100 && abs(velocityY) > 100) {
-                        showAppsList(isManagementMode = false)
-                        return true
-                    }
-                }
-                return false
-            }
-        })
-    }
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        return gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
-    }
-
-    private fun loadAppsToCache() {
+    private fun loadData() {
         lifecycleScope.launch(Dispatchers.Default) {
-            allInstalledApps = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
-            isAppCacheReady = true
-        }
-    }
-
-    private fun setupWedges() {
-        val startAngles = listOf(-120f, -60f, 0f, 60f, 120f, 180f)
-        for (i in wedgeViews.indices) {
-            val wedge = wedgeViews[i]
-            wedge.startAngle = startAngles[i % 6]
-            wedge.iconRadiusFraction = if (i < 6) 0.6f else 0.85f
-            val pkg = prefs.getString(iconKeys[i], defaultPackages[i])!!
-            try { wedge.setImageDrawable(packageManager.getApplicationIcon(pkg)) } 
-            catch (e: Exception) { wedge.setImageResource(R.drawable.icona) }
-        }
-    }
-
-    private fun setupClickListeners() {
-        findViewById<View>(R.id.center_helper).setOnClickListener { finishAndRemoveTask() }
-        for (i in wedgeViews.indices) {
-            val wedge = wedgeViews[i]
-            val key = iconKeys[i]
-            wedge.setOnClickListener { launchApp(prefs.getString(key, defaultPackages[i])!!, "App") }
-            wedge.setOnLongClickListener { showAppPickerFor(i, key); true }
-        }
-    }
-
-    private fun checkDefaultLauncher() {
-        if (!isDefaultLauncher()) {
-            AlertDialog.Builder(this).setTitle("Launcher Predefinito").setMessage("Vuoi impostare questa app come launcher predefinito?")
-                .setPositiveButton("Sì") { _, _ -> startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) }
-                .setNegativeButton("No", null).show()
-        }
-    }
-
-    private fun isDefaultLauncher(): Boolean {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-        val resolveInfo = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-        return resolveInfo != null && packageName == resolveInfo.activityInfo.packageName
-    }
-
-    private fun getEffectiveCategory(appInfo: ApplicationInfo): Int {
-        return categoryPrefs.getInt("app_cat_${appInfo.packageName}", if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) appInfo.category else -1)
-    }
-
-    private fun showAppsList(filterCategory: Int? = null, isManagementMode: Boolean = false, initialLetter: Char? = null) {
-        val dialog = Dialog(this, android.R.style.Theme_NoTitleBar_Fullscreen)
-        dialog.setContentView(R.layout.apps_list_dialog)
-        val recyclerView = dialog.findViewById<RecyclerView>(R.id.apps_recycler_view)
-        val layoutManager = LinearLayoutManager(this)
-        recyclerView.layoutManager = layoutManager
-        val quickLinksContainer = dialog.findViewById<LinearLayout>(R.id.category_quick_links)
-        val sideIndex = dialog.findViewById<LinearLayout>(R.id.side_index)
-
-        val apps = if (isAppCacheReady) allInstalledApps else packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
-        var filteredApps = if (filterCategory != null) apps.filter { getEffectiveCategory(it.activityInfo.applicationInfo) == filterCategory } else apps
-
-        val categoryPositions = mutableMapOf<Int, Int>()
-        val groupedApps = mutableListOf<AppListItem>()
-
-        if (filterCategory == null) {
-            val categoriesMap = mutableMapOf<Int, MutableList<ResolveInfo>>()
-            for (app in filteredApps) categoriesMap.getOrPut(getEffectiveCategory(app.activityInfo.applicationInfo)) { mutableListOf() }.add(app)
-            categoriesMap.keys.sorted().forEach { catId ->
-                categoryPositions[catId] = groupedApps.size
-                groupedApps.add(AppListItem.Header(getCategoryName(catId), catId))
-                categoriesMap[catId]!!.sortedBy { it.loadLabel(packageManager).toString().lowercase() }.forEach { groupedApps.add(AppListItem.App(it)) }
+            allApps = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+            cacheReady = true
+            withContext(Dispatchers.Main) {
+                if (prefs.getString(keys[0], null) == null) {
+                    val s = allApps.shuffled(); val e = prefs.edit()
+                    for (i in keys.indices) if (i != 5 && i < s.size) e.putString(keys[i], s[i].activityInfo.packageName)
+                    e.apply()
+                }
+                setupUI()
             }
-        } else {
-            filteredApps.sortedBy { it.loadLabel(packageManager).toString().lowercase() }.forEach { groupedApps.add(AppListItem.App(it)) }
-            quickLinksContainer.visibility = View.GONE
         }
+    }
 
-        // Side Index Bar (A-Z)
-        if (filterCategory == null) {
-            val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray()
-            for (letter in alphabet) {
-                val tv = TextView(this).apply {
-                    text = letter.toString()
-                    textSize = 12f
-                    gravity = android.view.Gravity.CENTER
-                    setPadding(0, 4, 0, 4)
-                    setOnClickListener {
-                        val pos = groupedApps.indexOfFirst { it is AppListItem.App && it.resolveInfo.loadLabel(packageManager).toString().uppercase().startsWith(letter) }
-                        if (pos != -1) layoutManager.scrollToPositionWithOffset(pos, 0)
+    private fun setupUI() {
+        val base = listOf(-120f, -60f, 0f, 60f, 120f, 180f)
+        val colors = listOf(Color.parseColor("#660000FF"), Color.parseColor("#66FF0000"), Color.parseColor("#6600FF00"))
+        for (i in wedges.indices) {
+            val w = wedges[i]; val k = keys[i]
+            w.wedgeColor = colors[i % 3]
+            if (i < 6) { w.startAngle = base[i]; w.iconRadiusFraction = 0.6f }
+            else { w.startAngle = base[i - 6] + 30f; w.iconRadiusFraction = 0.85f }
+            if (i == 5) {
+                w.setImageResource(R.drawable.icona)
+                w.setOnClickListener { showCats() }
+            } else {
+                val p = prefs.getString(k, null)
+                if (p != null) {
+                    try { w.setImageDrawable(packageManager.getApplicationIcon(p)) } catch (e: Exception) { w.setImageResource(R.drawable.icona) }
+                }
+                w.setOnClickListener { 
+                    val pkg = prefs.getString(k, null)
+                    if (pkg != null) {
+                        try { showAppsList(getCat(packageManager.getApplicationInfo(pkg, 0))) } catch (e: Exception) { showAppsList() }
                     }
                 }
-                sideIndex.addView(tv)
-            }
-        } else {
-            sideIndex.visibility = View.GONE
-        }
-
-        if (filterCategory == null) {
-            categoryPositions.keys.sorted().forEach { catId ->
-                quickLinksContainer.addView(TextView(this).apply {
-                    text = getCategoryName(catId); setPadding(24, 12, 24, 12); setTextColor(resources.getColor(android.R.color.darker_gray, null))
-                    setOnClickListener { layoutManager.scrollToPositionWithOffset(categoryPositions[catId] ?: 0, 0) }
-                })
-            }
-            quickLinksContainer.addView(TextView(this).apply {
-                text = "Impostazioni"; setPadding(24, 12, 24, 12); setTextColor(resources.getColor(android.R.color.holo_blue_dark, null))
-                setOnClickListener { dialog.dismiss(); showCategoriesList() }
-            })
-        }
-        
-        recyclerView.adapter = AppsAdapter(groupedApps) { resolveInfo ->
-            if (isManagementMode) showMoveToCategoryDialog(resolveInfo) { dialog.dismiss(); showAppsList(filterCategory, true) }
-            else { launchApp(resolveInfo.activityInfo.packageName, resolveInfo.loadLabel(packageManager).toString()); dialog.dismiss() }
-        }
-
-        if (initialLetter != null) {
-            val pos = groupedApps.indexOfFirst { it is AppListItem.App && it.resolveInfo.loadLabel(packageManager).toString().lowercase().startsWith(initialLetter) }
-            if (pos != -1) layoutManager.scrollToPositionWithOffset(pos, 0)
-        }
-        dialog.show()
-    }
-
-    private fun showCategoriesList() {
-        val dialog = Dialog(this, android.R.style.Theme_NoTitleBar_Fullscreen)
-        dialog.setContentView(R.layout.categories_list_dialog)
-        val recyclerView = dialog.findViewById<RecyclerView>(R.id.categories_recycler_view)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        val apps = if (isAppCacheReady) allInstalledApps else packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
-        val categoriesSet = apps.map { getEffectiveCategory(it.activityInfo.applicationInfo) }.toSet()
-        recyclerView.adapter = CategoriesAdapter(categoriesSet.toList().sorted(), 
-            onClick = { id -> dialog.dismiss(); showAppsList(id, isManagementMode = true) },
-            onLongClick = { id -> showRenameCategoryDialog(id) { dialog.dismiss(); showCategoriesList() } }
-        )
-        dialog.show()
-    }
-
-    private fun showRenameCategoryDialog(categoryId: Int, onComplete: () -> Unit) {
-        val editText = EditText(this).apply { setText(getCategoryName(categoryId)) }
-        AlertDialog.Builder(this).setTitle("Rinomina Categoria").setView(editText)
-            .setPositiveButton("Salva") { _, _ -> categoryPrefs.edit().putString("cat_name_$categoryId", editText.text.toString()).apply(); onComplete() }
-            .setNegativeButton("Annulla", null).show()
-    }
-
-    private fun showMoveToCategoryDialog(resolveInfo: ResolveInfo, onComplete: () -> Unit) {
-        val categories = listOf(ApplicationInfo.CATEGORY_GAME, ApplicationInfo.CATEGORY_AUDIO, ApplicationInfo.CATEGORY_VIDEO, ApplicationInfo.CATEGORY_IMAGE, ApplicationInfo.CATEGORY_SOCIAL, ApplicationInfo.CATEGORY_NEWS, ApplicationInfo.CATEGORY_MAPS, ApplicationInfo.CATEGORY_PRODUCTIVITY, -1).distinct()
-        val names = categories.map { getCategoryName(it) }.toTypedArray()
-        AlertDialog.Builder(this).setTitle("Sposta in...").setItems(names) { _, which ->
-            categoryPrefs.edit().putInt("app_cat_${resolveInfo.activityInfo.packageName}", categories[which]).apply(); onComplete()
-        }.show()
-    }
-
-    private fun getCategoryName(category: Int): String {
-        val customName = categoryPrefs.getString("cat_name_$category", null)
-        if (customName != null) return customName
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            when (category) {
-                ApplicationInfo.CATEGORY_GAME -> "Giochi"
-                ApplicationInfo.CATEGORY_AUDIO -> "Audio"
-                ApplicationInfo.CATEGORY_VIDEO -> "Video"
-                ApplicationInfo.CATEGORY_IMAGE -> "Immagini"
-                ApplicationInfo.CATEGORY_SOCIAL -> "Social"
-                ApplicationInfo.CATEGORY_NEWS -> "News"
-                ApplicationInfo.CATEGORY_MAPS -> "Mappe"
-                ApplicationInfo.CATEGORY_PRODUCTIVITY -> "Produttività"
-                else -> "Altro"
-            }
-        } else "Applicazioni"
-    }
-
-    private fun launchApp(packageName: String, appName: String) {
-        val intent = packageManager.getLaunchIntentForPackage(packageName)
-        if (intent != null) {
-            try { startActivity(intent); finishAndRemoveTask() } 
-            catch (e: Exception) { Toast.makeText(this, "$appName non installato", Toast.LENGTH_SHORT).show() }
-        } else Toast.makeText(this, "$appName non installato", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun showAppPickerFor(index: Int, key: String) {
-        val dialog = Dialog(this, android.R.style.Theme_NoTitleBar_Fullscreen)
-        dialog.setContentView(R.layout.apps_list_dialog)
-        val recyclerView = dialog.findViewById<RecyclerView>(R.id.apps_recycler_view)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        val apps = if (isAppCacheReady) allInstalledApps else emptyList()
-        recyclerView.adapter = AppsAdapter(apps.sortedBy { it.loadLabel(packageManager).toString() }.map { AppListItem.App(it) }) { resolveInfo ->
-            val pkg = resolveInfo.activityInfo.packageName
-            prefs.edit().putString(key, pkg).apply()
-            try { wedgeViews[index].setImageDrawable(packageManager.getApplicationIcon(pkg)) } 
-            catch (e: Exception) { wedgeViews[index].setImageResource(R.drawable.icona) }
-            dialog.dismiss()
-        }
-        dialog.show()
-    }
-
-    sealed class AppListItem {
-        data class Header(val title: String, val id: Int) : AppListItem()
-        data class App(val resolveInfo: ResolveInfo) : AppListItem()
-    }
-
-    inner class AppsAdapter(private val items: List<AppListItem>, private val onClick: (ResolveInfo) -> Unit) :
-        RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-        override fun getItemViewType(position: Int) = if (items[position] is AppListItem.Header) 0 else 1
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = if (viewType == 0) 
-            HeaderViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.header_item, parent, false))
-            else AppViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.app_item, parent, false))
-        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-            val item = items[position]
-            if (holder is HeaderViewHolder && item is AppListItem.Header) holder.title.text = item.title
-            else if (holder is AppViewHolder && item is AppListItem.App) {
-                holder.name.text = item.resolveInfo.loadLabel(packageManager)
-                holder.icon.setImageDrawable(item.resolveInfo.loadIcon(packageManager))
-                holder.itemView.setOnClickListener { onClick(item.resolveInfo) }
+                w.setOnLongClickListener { pickApp(i, k); true }
             }
         }
-        override fun getItemCount() = items.size
-        inner class HeaderViewHolder(v: View) : RecyclerView.ViewHolder(v) { val title: TextView = v.findViewById(R.id.header_title) }
-        inner class AppViewHolder(v: View) : RecyclerView.ViewHolder(v) { val icon: ImageView = v.findViewById(R.id.app_icon); val name: TextView = v.findViewById(R.id.app_name) }
     }
 
-    inner class CategoriesAdapter(private val categories: List<Int>, private val onClick: (Int) -> Unit, private val onLongClick: (Int) -> Unit) :
-        RecyclerView.Adapter<CategoriesAdapter.ViewHolder>() {
-        override fun onCreateViewHolder(p: ViewGroup, t: Int) = ViewHolder(LayoutInflater.from(p.context).inflate(R.layout.category_item, p, false))
-        override fun onBindViewHolder(h: ViewHolder, p: Int) {
-            val id = categories[p]
-            h.name.text = getCategoryName(id)
-            h.itemView.setOnClickListener { onClick(id) }
-            h.itemView.setOnLongClickListener { onLongClick(id); true }
+    private fun pickApp(idx: Int, k: String) {
+        val d = Dialog(this, android.R.style.Theme_NoTitleBar_Fullscreen)
+        d.setContentView(R.layout.apps_list_dialog)
+        val rv = d.findViewById<RecyclerView>(R.id.apps_recycler_view)
+        rv.layoutManager = LinearLayoutManager(this)
+        rv.adapter = AppsAdapter(allApps.sortedBy { it.loadLabel(packageManager).toString().lowercase() }.map { AppListItem.App(it) }) { res ->
+            val pkg = res.activityInfo.packageName
+            prefs.edit().putString(k, pkg).apply()
+            try { wedges[idx].setImageDrawable(packageManager.getApplicationIcon(pkg)) } catch (e: Exception) {}
+            d.dismiss()
         }
-        override fun getItemCount() = categories.size
-        inner class ViewHolder(v: View) : RecyclerView.ViewHolder(v) { val name: TextView = v.findViewById(R.id.category_name) }
+        d.show()
+    }
+
+    private fun showAppsList(filter: Int? = null, mgmt: Boolean = false) {
+        val d = Dialog(this, android.R.style.Theme_NoTitleBar_Fullscreen)
+        d.setContentView(R.layout.apps_list_dialog)
+        val rv = d.findViewById<RecyclerView>(R.id.apps_recycler_view)
+        val lm = LinearLayoutManager(this); rv.layoutManager = lm
+        val ql = d.findViewById<LinearLayout>(R.id.category_quick_links)
+        val apps = if (filter != null) allApps.filter { getCat(it.activityInfo.applicationInfo) == filter } else allApps
+        val items = mutableListOf<AppListItem>()
+        val posMap = mutableMapOf<Int, Int>()
+        if (filter == null) {
+            val map = apps.groupBy { getCat(it.activityInfo.applicationInfo) }
+            map.keys.sorted().forEach { id ->
+                posMap[id] = items.size
+                items.add(AppListItem.Header(getCatName(id), id))
+                map[id]!!.sortedBy { it.loadLabel(packageManager).toString().lowercase() }.forEach { items.add(AppListItem.App(it)) }
+            }
+            posMap.keys.sorted().forEach { id ->
+                ql?.addView(TextView(this).apply { text = getCatName(id); setPadding(24,12,24,12); setTextColor(resources.getColor(android.R.color.darker_gray, null))
+                    setOnClickListener { lm.scrollToPositionWithOffset(posMap[id] ?: 0, 0) } })
+            }
+            ql?.addView(TextView(this).apply { text = "Impostazioni"; setPadding(24,12,24,12); setTextColor(resources.getColor(android.R.color.holo_blue_dark, null))
+                setOnClickListener { d.dismiss(); showCats() } })
+        } else apps.sortedBy { it.loadLabel(packageManager).toString().lowercase() }.forEach { items.add(AppListItem.App(it)) }
+        rv.adapter = AppsAdapter(items) { res -> if (mgmt) moveDialog(res) { d.dismiss(); showAppsList(filter, true) } else { launch(res.activityInfo.packageName); d.dismiss() } }
+        d.show()
+    }
+
+    private fun showCats() {
+        val d = Dialog(this, android.R.style.Theme_NoTitleBar_Fullscreen)
+        d.setContentView(R.layout.categories_list_dialog)
+        val rv = d.findViewById<RecyclerView>(R.id.categories_recycler_view)
+        rv.layoutManager = LinearLayoutManager(this)
+        val cats = allApps.map { getCat(it.activityInfo.applicationInfo) }.toSet().toList().sorted()
+        rv.adapter = CategoriesAdapter(cats, { id -> d.dismiss(); showAppsList(id, true) }, { id -> renameDialog(id) { d.dismiss(); showCats() } })
+        d.show()
+    }
+
+    private fun renameDialog(id: Int, cb: () -> Unit) {
+        val et = EditText(this).apply { setText(getCatName(id)) }
+        AlertDialog.Builder(this).setTitle("Rinomina").setView(et).setPositiveButton("OK") { _, _ -> catPrefs.edit().putString("cat_$id", et.text.toString()).apply(); cb() }.show()
+    }
+
+    private fun moveDialog(res: ResolveInfo, cb: () -> Unit) {
+        val cats = listOf(0,1,2,3,4,5,6,7,-1)
+        AlertDialog.Builder(this).setTitle("Sposta").setItems(cats.map { getCatName(it) }.toTypedArray()) { _, w -> catPrefs.edit().putInt("app_cat_${res.activityInfo.packageName}", cats[w]).apply(); cb() }.show()
+    }
+
+    private fun launch(pkg: String) {
+        val intent = packageManager.getLaunchIntentForPackage(pkg)
+        if (intent != null) try { startActivity(intent); finishAndRemoveTask() } catch (e: Exception) {}
+    }
+
+    private fun checkLauncher() {
+        val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val r = packageManager.resolveActivity(i, PackageManager.MATCH_DEFAULT_ONLY)
+        if (r == null || packageName != r.activityInfo.packageName) {
+            AlertDialog.Builder(this).setTitle("Launcher").setMessage("Imposta predefinito?").setPositiveButton("Sì") { _, _ -> startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) }.setNegativeButton("No", null).show()
+        }
+    }
+
+    private fun getCatName(id: Int): String {
+        catPrefs.getString("cat_$id", null)?.let { return it }
+        return if (Build.VERSION.SDK_INT >= 26) when(id) {
+            0 -> "Giochi"; 1 -> "Audio"; 2 -> "Video"; 3 -> "Immagini"; 4 -> "Social"; 5 -> "News"; 6 -> "Mappe"; 7 -> "Produttività"; else -> "Altro"
+        } else "App"
+    }
+
+    private fun getCat(ai: ApplicationInfo) = catPrefs.getInt("app_cat_${ai.packageName}", if (Build.VERSION.SDK_INT >= 26) ai.category else -1)
+
+    sealed class AppListItem { data class Header(val title: String, val id: Int) : AppListItem(); data class App(val res: ResolveInfo) : AppListItem() }
+    inner class AppsAdapter(private val list: List<AppListItem>, private val onClick: (ResolveInfo) -> Unit) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        override fun getItemViewType(p: Int) = if (list[p] is AppListItem.Header) 0 else 1
+        override fun onCreateViewHolder(parent: ViewGroup, t: Int) = if (t == 0) HeaderVH(LayoutInflater.from(parent.context).inflate(R.layout.header_item, parent, false)) else AppVH(LayoutInflater.from(parent.context).inflate(R.layout.app_item, parent, false))
+        override fun onBindViewHolder(h: RecyclerView.ViewHolder, p: Int) {
+            val i = list[p]
+            if (h is HeaderVH && i is AppListItem.Header) h.title.text = i.title
+            else if (h is AppVH && i is AppListItem.App) { h.name.text = i.res.loadLabel(packageManager); h.icon.setImageDrawable(i.res.loadIcon(packageManager)); h.itemView.setOnClickListener { onClick(i.res) } }
+        }
+        override fun getItemCount() = list.size
+        inner class HeaderVH(v: View) : RecyclerView.ViewHolder(v) { val title: TextView = v.findViewById(R.id.header_title) }
+        inner class AppVH(v: View) : RecyclerView.ViewHolder(v) { val icon: ImageView = v.findViewById(R.id.app_icon); val name: TextView = v.findViewById(R.id.app_name) }
+    }
+    inner class CategoriesAdapter(private val list: List<Int>, private val onClick: (Int) -> Unit, private val onLongClick: (Int) -> Unit) : RecyclerView.Adapter<CategoriesAdapter.VH>() {
+        override fun onCreateViewHolder(p: ViewGroup, t: Int) = VH(LayoutInflater.from(p.context).inflate(R.layout.category_item, p, false))
+        override fun onBindViewHolder(h: VH, p: Int) { val id = list[p]; h.name.text = getCatName(id); h.itemView.setOnClickListener { onClick(id) }; h.itemView.setOnLongClickListener { onLongClick(id); true } }
+        override fun getItemCount() = list.size
+        inner class VH(v: View) : RecyclerView.ViewHolder(v) { val name: TextView = v.findViewById(R.id.category_name) }
     }
 }

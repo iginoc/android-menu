@@ -52,18 +52,6 @@
         app:layout_constraintTop_toBottomOf="@id/divider"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/side_index" />
-
-    <!-- Barra Alfabetica Laterale -->
-    <LinearLayout
-        android:id="@+id/side_index"
-        android:layout_width="40dp"
-        android:layout_height="0dp"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:background="#11000000"
-        app:layout_constraintTop_toBottomOf="@id/divider"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
