@@ -28,7 +28,8 @@ class WedgeImageView @JvmOverloads constructor(
             invalidate()
         }
 
-    var centerRadiusDp: Float = 140f
+    // Posizione dell'icona espressa come frazione del raggio (0.0 a 1.0)
+    var iconRadiusFraction: Float = 0.7f 
         set(value) {
             field = value
             invalidate()
@@ -40,7 +41,7 @@ class WedgeImageView @JvmOverloads constructor(
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.BLACK
         style = Paint.Style.STROKE
-        strokeWidth = 30f // Spessore del tratto nero triplicato (da 10f a 30f)
+        strokeWidth = 30f
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -48,7 +49,6 @@ class WedgeImageView @JvmOverloads constructor(
         
         val centerX = width / 2f
         val centerY = height / 2f
-        
         rect.set(0f, 0f, width.toFloat(), height.toFloat())
         
         clipPath.reset()
@@ -57,14 +57,14 @@ class WedgeImageView @JvmOverloads constructor(
         clipPath.lineTo(centerX, centerY)
         clipPath.close()
         
-        // Disegno dello sfondo dello spicchio con ritaglio
         canvas.save()
         canvas.clipPath(clipPath)
         
         val midAngleRad = Math.toRadians((startAngle + sweepAngle / 2f).toDouble())
-        val distancePx = centerRadiusDp * resources.displayMetrics.density
-        val offsetX = (Math.cos(midAngleRad) * distancePx).toFloat()
-        val offsetY = (Math.sin(midAngleRad) * distancePx).toFloat()
+        // Calcola la distanza in base alla dimensione reale della vista
+        val distance = (width / 2f) * iconRadiusFraction
+        val offsetX = (Math.cos(midAngleRad) * distance).toFloat()
+        val offsetY = (Math.sin(midAngleRad) * distance).toFloat()
         
         canvas.translate(offsetX, offsetY)
         canvas.scale(0.8f, 0.8f, centerX, centerY)
@@ -72,21 +72,13 @@ class WedgeImageView @JvmOverloads constructor(
         super.onDraw(canvas)
         canvas.restore()
 
-        // Disegno del bordo nero tra gli spicchi
         borderPath.reset()
         borderPath.moveTo(centerX, centerY)
-        // Disegno la linea radiale all'angolo di inizio
         val startRad = Math.toRadians(startAngle.toDouble())
-        val startX = centerX + (width / 2f) * Math.cos(startRad).toFloat()
-        val startY = centerY + (height / 2f) * Math.sin(startRad).toFloat()
-        borderPath.lineTo(startX, startY)
-        
-        // Disegno la linea radiale all'angolo di fine
+        borderPath.lineTo(centerX + (width / 2f) * Math.cos(startRad).toFloat(), centerY + (height / 2f) * Math.sin(startRad).toFloat())
         borderPath.moveTo(centerX, centerY)
         val endRad = Math.toRadians((startAngle + sweepAngle).toDouble())
-        val endX = centerX + (width / 2f) * Math.cos(endRad).toFloat()
-        val endY = centerY + (height / 2f) * Math.sin(endRad).toFloat()
-        borderPath.lineTo(endX, endY)
+        borderPath.lineTo(centerX + (width / 2f) * Math.cos(endRad).toFloat(), centerY + (height / 2f) * Math.sin(endRad).toFloat())
         
         canvas.drawPath(borderPath, borderPaint)
     }
@@ -95,26 +87,19 @@ class WedgeImageView @JvmOverloads constructor(
         if (event.action == MotionEvent.ACTION_DOWN) {
             val x = event.x - width / 2f
             val y = event.y - height / 2f
-            
             val distance = sqrt((x * x + y * y).toDouble())
             
-            if (distance < (width / 4f)) return false
+            // Per gli spicchi interni (piccoli), non filtriamo il centro. Per quelli grandi sì.
+            val isSmallWedge = width < resources.displayMetrics.widthPixels * 0.6
+            if (!isSmallWedge && distance < (width / 4f)) return false
 
             var touchAngle = Math.toDegrees(atan2(y.toDouble(), x.toDouble())).toFloat()
-            
-            var normalizedStart = startAngle % 360
-            if (normalizedStart < 0) normalizedStart += 360
-            
-            var normalizedTouch = touchAngle % 360
-            if (normalizedTouch < 0) normalizedTouch += 360
-            
+            var normalizedStart = (startAngle % 360 + 360) % 360
+            var normalizedTouch = (touchAngle % 360 + 360) % 360
             val endAngle = normalizedStart + sweepAngle
             
-            val isInWedge = if (endAngle <= 360) {
-                normalizedTouch in normalizedStart..endAngle
-            } else {
-                normalizedTouch >= normalizedStart || normalizedTouch <= (endAngle % 360)
-            }
+            val isInWedge = if (endAngle <= 360) normalizedTouch in normalizedStart..endAngle
+                            else normalizedTouch >= normalizedStart || normalizedTouch <= (endAngle % 360)
 
             if (!isInWedge) return false
         }

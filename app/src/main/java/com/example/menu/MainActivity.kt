@@ -39,17 +39,14 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: SharedPreferences
     private lateinit var categoryPrefs: SharedPreferences
-    private val iconKeys = listOf("icon_1_pkg", "icon_2_pkg", "icon_3_pkg", "icon_4_pkg", "icon_5_pkg", "icon_6_pkg")
+    private val iconKeys = (1..12).map { "icon_${it}_pkg" }
     private val defaultPackages = listOf(
-        "com.whatsapp", "de.volkswagen.mapsandmore", "org.prowl.torque",
-        "com.android.settings", "com.android.settings", "com.android.settings"
+        "com.whatsapp", "de.volkswagen.mapsandmore", "org.prowl.torque", "com.android.settings", "com.android.settings", "com.android.settings",
+        "com.android.chrome", "com.google.android.youtube", "com.google.android.apps.maps", "com.android.calendar", "com.android.calculator2", "com.android.deskclock"
     )
     
     private val wedgeViews by lazy {
-        listOf<WedgeImageView>(
-            findViewById(R.id.wedge_1), findViewById(R.id.wedge_2), findViewById(R.id.wedge_3),
-            findViewById(R.id.wedge_4), findViewById(R.id.wedge_5), findViewById(R.id.wedge_6)
-        )
+        (1..12).map { id -> findViewById<WedgeImageView>(resources.getIdentifier("wedge_$id", "id", packageName)) }
     }
 
     private lateinit var gestureDetector: GestureDetector
@@ -75,11 +72,6 @@ class MainActivity : AppCompatActivity() {
         setupClickListeners()
         setupWedges()
         checkDefaultLauncher()
-        
-        // Collega la DrawingView per la ricerca alfabetica laterale
-        findViewById<DrawingView>(R.id.drawing_view).onLetterSelected = { letter ->
-            showAppsList(initialLetter = letter)
-        }
     }
 
     private fun setupGestureDetector() {
@@ -112,16 +104,18 @@ class MainActivity : AppCompatActivity() {
     private fun setupWedges() {
         val startAngles = listOf(-120f, -60f, 0f, 60f, 120f, 180f)
         for (i in wedgeViews.indices) {
-            wedgeViews[i].startAngle = startAngles[i]
+            val wedge = wedgeViews[i]
+            wedge.startAngle = startAngles[i % 6]
+            wedge.iconRadiusFraction = if (i < 6) 0.6f else 0.85f
             val pkg = prefs.getString(iconKeys[i], defaultPackages[i])!!
-            try { wedgeViews[i].setImageDrawable(packageManager.getApplicationIcon(pkg)) } 
-            catch (e: Exception) { wedgeViews[i].setImageResource(R.drawable.icona) }
+            try { wedge.setImageDrawable(packageManager.getApplicationIcon(pkg)) } 
+            catch (e: Exception) { wedge.setImageResource(R.drawable.icona) }
         }
     }
 
     private fun setupClickListeners() {
         findViewById<View>(R.id.center_helper).setOnClickListener { finishAndRemoveTask() }
-        for (i in iconKeys.indices) {
+        for (i in wedgeViews.indices) {
             val wedge = wedgeViews[i]
             val key = iconKeys[i]
             wedge.setOnClickListener { launchApp(prefs.getString(key, defaultPackages[i])!!, "App") }
@@ -154,6 +148,7 @@ class MainActivity : AppCompatActivity() {
         val layoutManager = LinearLayoutManager(this)
         recyclerView.layoutManager = layoutManager
         val quickLinksContainer = dialog.findViewById<LinearLayout>(R.id.category_quick_links)
+        val sideIndex = dialog.findViewById<LinearLayout>(R.id.side_index)
 
         val apps = if (isAppCacheReady) allInstalledApps else packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
         var filteredApps = if (filterCategory != null) apps.filter { getEffectiveCategory(it.activityInfo.applicationInfo) == filterCategory } else apps
@@ -172,6 +167,26 @@ class MainActivity : AppCompatActivity() {
         } else {
             filteredApps.sortedBy { it.loadLabel(packageManager).toString().lowercase() }.forEach { groupedApps.add(AppListItem.App(it)) }
             quickLinksContainer.visibility = View.GONE
+        }
+
+        // Side Index Bar (A-Z)
+        if (filterCategory == null) {
+            val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray()
+            for (letter in alphabet) {
+                val tv = TextView(this).apply {
+                    text = letter.toString()
+                    textSize = 12f
+                    gravity = android.view.Gravity.CENTER
+                    setPadding(0, 4, 0, 4)
+                    setOnClickListener {
+                        val pos = groupedApps.indexOfFirst { it is AppListItem.App && it.resolveInfo.loadLabel(packageManager).toString().uppercase().startsWith(letter) }
+                        if (pos != -1) layoutManager.scrollToPositionWithOffset(pos, 0)
+                    }
+                }
+                sideIndex.addView(tv)
+            }
+        } else {
+            sideIndex.visibility = View.GONE
         }
 
         if (filterCategory == null) {
@@ -261,8 +276,9 @@ class MainActivity : AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(this)
         val apps = if (isAppCacheReady) allInstalledApps else emptyList()
         recyclerView.adapter = AppsAdapter(apps.sortedBy { it.loadLabel(packageManager).toString() }.map { AppListItem.App(it) }) { resolveInfo ->
-            prefs.edit().putString(key, resolveInfo.activityInfo.packageName).apply()
-            try { wedgeViews[index].setImageDrawable(packageManager.getApplicationIcon(resolveInfo.activityInfo.packageName)) } 
+            val pkg = resolveInfo.activityInfo.packageName
+            prefs.edit().putString(key, pkg).apply()
+            try { wedgeViews[index].setImageDrawable(packageManager.getApplicationIcon(pkg)) } 
             catch (e: Exception) { wedgeViews[index].setImageResource(R.drawable.icona) }
             dialog.dismiss()
         }

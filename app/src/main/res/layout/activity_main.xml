@@ -8,115 +8,24 @@
     android:background="@android:color/black"
     tools:context=".MainActivity">
 
-    <!-- Drawing overlay spostato nello sfondo (prima degli altri elementi) -->
-    <com.example.menu.DrawingView
-        android:id="@+id/drawing_view"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+    <!-- Cerchio ESTERNO (dietro) - Tocca i bordi -->
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_7" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_8" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_9" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_10" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_11" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_12" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
 
-    <TextClock
-        android:id="@+id/clock"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="50dp"
-        android:format12Hour="HH:mm"
-        android:format24Hour="HH:mm"
-        android:textColor="@android:color/white"
-        android:textSize="80sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <!-- Cerchio INTERNO (principale) - Dimensione dimezzata -->
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_1" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintWidth_percent="0.5" app:layout_constraintHeight_percent="0.5" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_2" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintWidth_percent="0.5" app:layout_constraintHeight_percent="0.5" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_3" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintWidth_percent="0.5" app:layout_constraintHeight_percent="0.5" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_4" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintWidth_percent="0.5" app:layout_constraintHeight_percent="0.5" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_5" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintWidth_percent="0.5" app:layout_constraintHeight_percent="0.5" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.WedgeImageView android:id="@+id/wedge_6" android:layout_width="0dp" android:layout_height="0dp" android:scaleType="centerCrop" android:clickable="true" android:focusable="true" app:layout_constraintWidth_percent="0.5" app:layout_constraintHeight_percent="0.5" app:layout_constraintDimensionRatio="1:1" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
 
-    <com.example.menu.WedgeImageView
-        android:id="@+id/wedge_1"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:scaleType="centerCrop"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.example.menu.WedgeImageView
-        android:id="@+id/wedge_2"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:scaleType="centerCrop"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.example.menu.WedgeImageView
-        android:id="@+id/wedge_3"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:scaleType="centerCrop"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.example.menu.WedgeImageView
-        android:id="@+id/wedge_4"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:scaleType="centerCrop"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.example.menu.WedgeImageView
-        android:id="@+id/wedge_5"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:scaleType="centerCrop"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.example.menu.WedgeImageView
-        android:id="@+id/wedge_6"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:scaleType="centerCrop"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <View
-        android:id="@+id/center_helper"
-        android:layout_width="1dp"
-        android:layout_height="1dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <com.example.menu.DrawingView android:id="@+id/drawing_view" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent" />
+    <TextClock android:id="@+id/clock" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="50dp" android:format12Hour="HH:mm" android:format24Hour="HH:mm" android:textColor="@android:color/white" android:textSize="80sp" android:textStyle="bold" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+    <View android:id="@+id/center_helper" android:layout_width="1dp" android:layout_height="1dp" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
