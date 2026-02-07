@@ -9,7 +9,6 @@ import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -25,7 +24,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
@@ -33,17 +31,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.mlkit.common.model.DownloadConditions
-import com.google.mlkit.common.model.RemoteModelManager
-import com.google.mlkit.vision.digitalink.DigitalInkRecognition
-import com.google.mlkit.vision.digitalink.DigitalInkRecognitionModel
-import com.google.mlkit.vision.digitalink.DigitalInkRecognitionModelIdentifier
-import com.google.mlkit.vision.digitalink.DigitalInkRecognizer
-import com.google.mlkit.vision.digitalink.DigitalInkRecognizerOptions
-import com.google.mlkit.vision.digitalink.Ink
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
@@ -66,7 +55,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var gestureDetector: GestureDetector
     private var allInstalledApps: List<ResolveInfo> = emptyList()
     private var isAppCacheReady = false
-    private var recognizer: DigitalInkRecognizer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -83,11 +71,15 @@ class MainActivity : AppCompatActivity() {
         categoryPrefs = getSharedPreferences("custom_categories", Context.MODE_PRIVATE)
 
         setupGestureDetector()
-        setupDrawingRecognition()
         loadAppsToCache()
         setupClickListeners()
         setupWedges()
         checkDefaultLauncher()
+        
+        // Collega la DrawingView per la ricerca alfabetica laterale
+        findViewById<DrawingView>(R.id.drawing_view).onLetterSelected = { letter ->
+            showAppsList(initialLetter = letter)
+        }
     }
 
     private fun setupGestureDetector() {
@@ -95,9 +87,7 @@ class MainActivity : AppCompatActivity() {
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
                 if (e1 != null) {
                     val screenHeight = resources.displayMetrics.heightPixels
-                    // Lo swipe deve partire dall'ALTO (primo 15% dello schermo, sopra l'orologio)
                     val topThreshold = screenHeight * 0.15
-                    
                     if (e1.y < topThreshold && e2.y - e1.y > 100 && abs(velocityY) > 100) {
                         showAppsList(isManagementMode = false)
                         return true
@@ -106,24 +96,6 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
         })
-    }
-
-    private fun setupDrawingRecognition() {
-        val modelIdentifier = DigitalInkRecognitionModelIdentifier.fromLanguageTag("it-IT") ?: return
-        val model = DigitalInkRecognitionModel.builder(modelIdentifier).build()
-        val remoteModelManager = RemoteModelManager.getInstance()
-        recognizer = DigitalInkRecognition.getClient(DigitalInkRecognizerOptions.builder(model).build())
-        remoteModelManager.download(model, DownloadConditions.Builder().build())
-        findViewById<DrawingView>(R.id.drawing_view).onStrokeFinished = { ink -> recognizeInk(ink) }
-    }
-
-    private fun recognizeInk(ink: Ink) {
-        recognizer?.recognize(ink)?.addOnSuccessListener { result ->
-            if (result.candidates.isNotEmpty()) {
-                val text = result.candidates[0].text
-                if (text.isNotEmpty()) showAppsList(initialLetter = text[0].lowercaseChar())
-            }
-        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -287,11 +259,10 @@ class MainActivity : AppCompatActivity() {
         dialog.setContentView(R.layout.apps_list_dialog)
         val recyclerView = dialog.findViewById<RecyclerView>(R.id.apps_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(this)
-        val apps = if (isAppCacheReady) allInstalledApps else packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+        val apps = if (isAppCacheReady) allInstalledApps else emptyList()
         recyclerView.adapter = AppsAdapter(apps.sortedBy { it.loadLabel(packageManager).toString() }.map { AppListItem.App(it) }) { resolveInfo ->
-            val pkg = resolveInfo.activityInfo.packageName
-            prefs.edit().putString(key, pkg).apply()
-            try { wedgeViews[index].setImageDrawable(packageManager.getApplicationIcon(pkg)) } 
+            prefs.edit().putString(key, resolveInfo.activityInfo.packageName).apply()
+            try { wedgeViews[index].setImageDrawable(packageManager.getApplicationIcon(resolveInfo.activityInfo.packageName)) } 
             catch (e: Exception) { wedgeViews[index].setImageResource(R.drawable.icona) }
             dialog.dismiss()
         }
