@@ -36,7 +36,6 @@ class WedgeImageView @JvmOverloads constructor(
         val centerX = width / 2f
         val centerY = height / 2f
         
-        // Usiamo un piccolo padding per evitare che il bordo venga tagliato
         val padding = borderPaint.strokeWidth / 2f
         rect.set(padding, padding, width.toFloat() - padding, height.toFloat() - padding)
         
@@ -46,7 +45,6 @@ class WedgeImageView @JvmOverloads constructor(
         clipPath.lineTo(centerX, centerY)
         clipPath.close()
         
-        // 1. Disegna lo sfondo colorato dello spicchio
         if (wedgeColor != Color.TRANSPARENT) {
             paint.color = wedgeColor
             canvas.drawPath(clipPath, paint)
@@ -55,18 +53,17 @@ class WedgeImageView @JvmOverloads constructor(
         canvas.save()
         canvas.clipPath(clipPath)
         
-        // 2. Disegna l'icona centrata nello spicchio
         val midAngleRad = Math.toRadians((startAngle + sweepAngle / 2f).toDouble())
         val distance = (width / 2f) * iconRadiusFraction
         val offsetX = (Math.cos(midAngleRad) * distance).toFloat()
         val offsetY = (Math.sin(midAngleRad) * distance).toFloat()
         
         canvas.translate(offsetX, offsetY)
-        canvas.scale(0.7f, 0.7f, centerX, centerY)
+        // Ridotto lo zoom dell'icona da 0.7f a 0.5f
+        canvas.scale(0.5f, 0.5f, centerX, centerY)
         super.onDraw(canvas)
         canvas.restore()
 
-        // 3. Disegna i bordi neri (linee radiali e arco esterno)
         canvas.drawArc(rect, startAngle, sweepAngle, false, borderPaint)
         
         val startRad = Math.toRadians(startAngle.toDouble())
