@@ -28,13 +28,17 @@ class WedgeImageView @JvmOverloads constructor(
         color = Color.BLACK
         style = Paint.Style.STROKE
         strokeWidth = 30f
+        strokeCap = Paint.Cap.ROUND
     }
 
     override fun onDraw(canvas: Canvas) {
         if (width == 0 || height == 0) return
         val centerX = width / 2f
         val centerY = height / 2f
-        rect.set(0f, 0f, width.toFloat(), height.toFloat())
+        
+        // Usiamo un piccolo padding per evitare che il bordo venga tagliato
+        val padding = borderPaint.strokeWidth / 2f
+        rect.set(padding, padding, width.toFloat() - padding, height.toFloat() - padding)
         
         clipPath.reset()
         clipPath.moveTo(centerX, centerY)
@@ -62,11 +66,13 @@ class WedgeImageView @JvmOverloads constructor(
         super.onDraw(canvas)
         canvas.restore()
 
-        // 3. Disegna i bordi neri
+        // 3. Disegna i bordi neri (linee radiali e arco esterno)
+        canvas.drawArc(rect, startAngle, sweepAngle, false, borderPaint)
+        
         val startRad = Math.toRadians(startAngle.toDouble())
-        canvas.drawLine(centerX, centerY, centerX + (width / 2f) * Math.cos(startRad).toFloat(), centerY + (height / 2f) * Math.sin(startRad).toFloat(), borderPaint)
+        canvas.drawLine(centerX, centerY, centerX + (rect.width() / 2f) * Math.cos(startRad).toFloat(), centerY + (rect.height() / 2f) * Math.sin(startRad).toFloat(), borderPaint)
         val endRad = Math.toRadians((startAngle + sweepAngle).toDouble())
-        canvas.drawLine(centerX, centerY, centerX + (width / 2f) * Math.cos(endRad).toFloat(), centerY + (height / 2f) * Math.sin(endRad).toFloat(), borderPaint)
+        canvas.drawLine(centerX, centerY, centerX + (rect.width() / 2f) * Math.cos(endRad).toFloat(), centerY + (rect.height() / 2f) * Math.sin(endRad).toFloat(), borderPaint)
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
