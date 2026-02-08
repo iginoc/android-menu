@@ -152,7 +152,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun prepareAndAnimate(newCatId: Int?) {
-        val items = if (newCatId != null) {
+        val items = if (newCatId != null && newCatId != -2) {
             val catApps = allApps.filter { getCat(it.activityInfo.applicationInfo) == newCatId }
                 .sortedBy { it.loadLabel(packageManager).toString().lowercase() }
             val catLinks = getStoredLinks().filter { getLinkCat(it) == newCatId }.sorted()
@@ -161,7 +161,7 @@ class MainActivity : AppCompatActivity() {
 
         animateTransition {
             currentCategoryMode = newCatId
-            if (newCatId != null) {
+            if (newCatId != null && newCatId != -2) {
                 applyCategoryItemsToWedges(items ?: emptyList())
             } else {
                 setupUI()
@@ -181,7 +181,7 @@ class MainActivity : AppCompatActivity() {
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
                     for (w in wedges) w.rotation = 0f
-                    callback() // Esegue la sostituzione delle immagini alla FINE della rotazione
+                    callback()
                 }
             })
             start()
@@ -284,21 +284,23 @@ class MainActivity : AppCompatActivity() {
         d.findViewById<TextView>(R.id.dialog_title)?.text = if (filter != null) getCatName(filter) else "Applicazioni"
         val rv = d.findViewById<RecyclerView>(R.id.apps_recycler_view)
         val lm = LinearLayoutManager(this); rv.layoutManager = lm
-        val ql = d.findViewById<LinearLayout>(R.id.category_quick_links)
         val allLinks = getStoredLinks()
-        val apps = if (filter != null) allApps.filter { getCat(it.activityInfo.applicationInfo) == filter } else allApps
-        val links = if (filter != null) allLinks.filter { getLinkCat(it) == filter } else allLinks
         val items = mutableListOf<AppListItem>()
+        
         if (filter == null) {
-            val map = (apps.map { it to getCat(it.activityInfo.applicationInfo) } + links.map { it to getLinkCat(it) }).groupBy { it.second }
+            val map = (allApps.map { it to getCat(it.activityInfo.applicationInfo) } + allLinks.map { it to getLinkCat(it) }).groupBy { it.second }
             map.keys.sorted().forEach { id ->
                 items.add(AppListItem.Header(getCatName(id), id))
                 map[id]!!.forEach { (obj, _) -> if (obj is ResolveInfo) items.add(AppListItem.App(obj)) else if (obj is String) items.add(AppListItem.Link(obj)) }
             }
+        } else if (filter == -2) {
+            allApps.sortedBy { it.loadLabel(packageManager).toString().lowercase() }.forEach { items.add(AppListItem.App(it)) }
+            allLinks.sorted().forEach { items.add(AppListItem.Link(it)) }
         } else {
-            apps.sortedBy { it.loadLabel(packageManager).toString().lowercase() }.forEach { items.add(AppListItem.App(it)) }
-            links.sorted().forEach { items.add(AppListItem.Link(it)) }
+            allApps.filter { getCat(it.activityInfo.applicationInfo) == filter }.sortedBy { it.loadLabel(packageManager).toString().lowercase() }.forEach { items.add(AppListItem.App(it)) }
+            allLinks.filter { getLinkCat(it) == filter }.sorted().forEach { items.add(AppListItem.Link(it)) }
         }
+        
         rv.adapter = AppsAdapter(items, { item ->
             when (item) {
                 is AppListItem.App -> if (mgmt) moveDialog(item.res) { d.dismiss(); showAppsList(filter, true) } else { launch(item.res.activityInfo.packageName); d.dismiss() }
@@ -321,7 +323,9 @@ class MainActivity : AppCompatActivity() {
         rv.layoutManager = LinearLayoutManager(this)
         val cats = (allApps.map { getCat(it.activityInfo.applicationInfo) } + getStoredLinks().map { getLinkCat(it) }).toSet().toMutableList()
         if (!cats.contains(999)) cats.add(999)
-        rv.adapter = CategoriesAdapter(cats.sorted(), { id -> d.dismiss(); showAppsList(id, true) }, { id -> if(id != 999) renameDialog(id) { d.dismiss(); showCats() } })
+        if (!cats.contains(-2)) cats.add(-2)
+        
+        rv.adapter = CategoriesAdapter(cats.sorted(), { id -> d.dismiss(); showAppsList(id, true) }, { id -> if(id != 999 && id != -2) renameDialog(id) { d.dismiss(); showCats() } })
         d.findViewById<Button>(R.id.btn_export)?.setOnClickListener { exportLauncher.launch("menu_settings.json") }
         d.findViewById<Button>(R.id.btn_import)?.setOnClickListener { importLauncher.launch(arrayOf("application/json")) }
         d.show()
@@ -394,6 +398,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getCatName(id: Int): String {
+        if (id == -2) return "Tutte"
         if (id == 999) return "Link"
         catPrefs.getString("cat_$id", null)?.let { return it }
         return if (Build.VERSION.SDK_INT >= 26) when(id) {
@@ -421,7 +426,9 @@ class MainActivity : AppCompatActivity() {
             if (h is HeaderVH && i is AppListItem.Header) h.title.text = i.title
             else if (h is AppVH) {
                 if (i is AppListItem.App) {
-                    h.name.text = i.res.loadLabel(packageManager); h.icon.setImageDrawable(resToIcon(i.res)); h.itemView.setOnClickListener { onClick(i) }
+                    h.name.text = i.res.loadLabel(packageManager); h.icon.setImageDrawable(resToIcon(i.res)); 
+                    h.itemView.setOnClickListener { onClick(i) }
+                    h.itemView.setOnLongClickListener { launch(i.res.activityInfo.packageName); true }
                 } else if (i is AppListItem.Link) {
                     h.name.text = linkPrefs.getString("title_${i.url}", i.url); h.icon.setImageResource(android.R.drawable.ic_menu_share); h.itemView.setOnClickListener { onClick(i) }
                     h.itemView.setOnLongClickListener {
