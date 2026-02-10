@@ -131,12 +131,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadData() {
         lifecycleScope.launch(Dispatchers.Default) {
+            // Rilettura iniziale per popolare la cache all'avvio
             allApps = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
             catPrefs.all.forEach { (k, v) -> if (k.startsWith("app_cat_") && v is Int) appCategoryCache[k.substring(8)] = v }
             
-            allApps.forEach { res -> 
-                val pkg = res.activityInfo.packageName
-                iconCache[pkg] = res.loadIcon(packageManager)
+            // Carica icone solo per gli spicchi correnti per velocizzare l'avvio
+            keys.forEach { key ->
+                prefs.getString(key, null)?.let { pkg ->
+                    allApps.find { it.activityInfo.packageName == pkg }?.let { res ->
+                        iconCache[pkg] = res.loadIcon(packageManager)
+                    }
+                }
             }
             
             cacheReady = true
@@ -240,7 +245,7 @@ class MainActivity : AppCompatActivity() {
                 if (itemIdx < items.size) {
                     when (val item = items[itemIdx]) {
                         is AppListItem.App -> {
-                            w.setImageDrawable(iconCache[item.res.activityInfo.packageName] ?: item.res.loadIcon(packageManager))
+                            w.setImageDrawable(resToIcon(item.res))
                             w.setOnClickListener { launch(item.res.activityInfo.packageName) }
                         }
                         is AppListItem.Link -> {
@@ -268,7 +273,6 @@ class MainActivity : AppCompatActivity() {
                 val pkg = item.res.activityInfo.packageName
                 prefs.edit().putString(k, pkg).apply()
                 val icon = resToIcon(item.res)
-                iconCache[pkg] = icon
                 wedges[idx].setImageDrawable(icon)
                 d.dismiss()
             }
@@ -276,9 +280,29 @@ class MainActivity : AppCompatActivity() {
         d.show()
     }
     
-    private fun resToIcon(res: ResolveInfo): Drawable = iconCache[res.activityInfo.packageName] ?: res.loadIcon(packageManager)
+    private fun resToIcon(res: ResolveInfo): Drawable {
+        val pkg = res.activityInfo.packageName
+        return iconCache[pkg] ?: res.loadIcon(packageManager).also { iconCache[pkg] = it }
+    }
 
     private fun showAppsList(filter: Int? = null, mgmt: Boolean = false) {
+        if (filter == -2) {
+            // Rileggi le app dal sistema solo quando si preme "Tutte"
+            lifecycleScope.launch(Dispatchers.Default) {
+                allApps = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+                // Aggiorna anche la cache delle categorie basandosi sulla rilettura
+                catPrefs.all.forEach { (k, v) -> if (k.startsWith("app_cat_") && v is Int) appCategoryCache[k.substring(8)] = v }
+                
+                withContext(Dispatchers.Main) {
+                    internalShowAppsList(filter, mgmt)
+                }
+            }
+        } else {
+            internalShowAppsList(filter, mgmt)
+        }
+    }
+
+    private fun internalShowAppsList(filter: Int? = null, mgmt: Boolean = false) {
         val d = Dialog(this, android.R.style.Theme_NoTitleBar_Fullscreen)
         d.setContentView(R.layout.apps_list_dialog)
         d.findViewById<TextView>(R.id.dialog_title)?.text = if (filter != null) getCatName(filter) else "Applicazioni"
