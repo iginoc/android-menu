@@ -35,9 +35,10 @@ class MainActivity : AppCompatActivity() {
     private var allApps: List<ResolveInfo> = emptyList()
     private var cacheReady = false
     private var currentCategoryMode: Int? = null
+    private var isCollageMode = false
     
     private val appCategoryCache = mutableMapOf<String, Int>()
-    private val iconCache = mutableMapOf<String, Drawable>()
+    internal val iconCache = mutableMapOf<String, Drawable>()
 
     private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         uri?.let { exportToFile(it) }
@@ -60,6 +61,8 @@ class MainActivity : AppCompatActivity() {
         catPrefs = getSharedPreferences("custom_categories", MODE_PRIVATE)
         linkPrefs = getSharedPreferences("links_storage", MODE_PRIVATE)
         
+        isCollageMode = prefs.getBoolean("is_collage_mode", false)
+        
         val ids = listOf(R.id.wedge_1, R.id.wedge_2, R.id.wedge_3, R.id.wedge_4, R.id.wedge_5, R.id.wedge_6,
                          R.id.wedge_7, R.id.wedge_8, R.id.wedge_9, R.id.wedge_10, R.id.wedge_11, R.id.wedge_12)
         for (id in ids) findViewById<WedgeImageView>(id)?.let { wedges.add(it) }
@@ -71,12 +74,85 @@ class MainActivity : AppCompatActivity() {
                 finishAndRemoveTask()
             }
         }
+
+        findViewById<View>(R.id.clock)?.setOnLongClickListener {
+            isCollageMode = !isCollageMode
+            prefs.edit().putBoolean("is_collage_mode", isCollageMode).apply()
+            updateViewVisibility()
+            true
+        }
         
         if (savedInstanceState == null) {
             handleSharedIntent(intent)
         }
         loadData()
         checkLauncher()
+    }
+
+    private fun updateViewVisibility() {
+        val drawingView = findViewById<DrawingView>(R.id.drawing_view)
+        val catDisplay = findViewById<TextView>(R.id.category_display_name)
+        
+        if (isCollageMode) {
+            wedges.forEach { it.visibility = View.GONE }
+            catDisplay?.visibility = View.GONE
+            drawingView?.visibility = View.VISIBLE
+            updateCollageData()
+        } else {
+            wedges.forEach { it.visibility = View.VISIBLE }
+            catDisplay?.visibility = View.VISIBLE
+            drawingView?.visibility = View.GONE
+            if (currentCategoryMode != null) {
+                prepareAndAnimate(currentCategoryMode)
+            } else {
+                setupUI()
+            }
+        }
+    }
+
+    private fun updateCollageData() {
+        val drawingView = findViewById<DrawingView>(R.id.drawing_view) ?: return
+        val items = mutableListOf<AppListItem>()
+        items.add(AppListItem.Special) // La prima icona è speciale (nera)
+
+        if (currentCategoryMode != null && currentCategoryMode != -2) {
+            val catApps = allApps.filter { getCat(it.activityInfo.applicationInfo) == currentCategoryMode }
+                .sortedBy { it.loadLabel(packageManager).toString().lowercase() }
+            val catLinks = getStoredLinks().filter { getLinkCat(it) == currentCategoryMode }.sorted()
+            items.addAll(catApps.map { AppListItem.App(it) })
+            items.addAll(catLinks.map { AppListItem.Link(it) })
+        } else {
+            keys.forEach { key ->
+                prefs.getString(key, null)?.let { pkg ->
+                    allApps.find { it.activityInfo.packageName == pkg }?.let { items.add(AppListItem.App(it)) }
+                }
+            }
+        }
+        
+        drawingView.setData(items) { item ->
+            when (item) {
+                is AppListItem.Special -> {
+                    if (currentCategoryMode != null) {
+                        prepareAndAnimate(null)
+                    } else {
+                        showCats()
+                    }
+                }
+                is AppListItem.App -> {
+                    if (currentCategoryMode == null) {
+                        val pkg = item.res.activityInfo.packageName
+                        try {
+                            val newCat = getCat(packageManager.getApplicationInfo(pkg, 0))
+                            prepareAndAnimate(newCat)
+                        } catch (e: Exception) { showAppsList() }
+                    } else {
+                        launch(item.res.activityInfo.packageName)
+                    }
+                }
+                is AppListItem.Link -> openLink(item.url)
+                else -> {}
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -109,7 +185,7 @@ class MainActivity : AppCompatActivity() {
             val formattedUrl = if (!urlStr.startsWith("http")) "https://$urlStr" else urlStr
             val connection = (URL(formattedUrl).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 5000; readTimeout = 5000
-                setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/91.0.4472.124 Safari/537.36")
             }
             val html = connection.inputStream.bufferedReader().use { it.readText() }
             val match = Regex("<title>(.*?)</title>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)).find(html)
@@ -131,11 +207,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadData() {
         lifecycleScope.launch(Dispatchers.Default) {
-            // Rilettura iniziale per popolare la cache all'avvio
             allApps = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
             catPrefs.all.forEach { (k, v) -> if (k.startsWith("app_cat_") && v is Int) appCategoryCache[k.substring(8)] = v }
             
-            // Carica icone solo per gli spicchi correnti per velocizzare l'avvio
             keys.forEach { key ->
                 prefs.getString(key, null)?.let { pkg ->
                     allApps.find { it.activityInfo.packageName == pkg }?.let { res ->
@@ -151,7 +225,7 @@ class MainActivity : AppCompatActivity() {
                     for (i in keys.indices) if (i != 5 && i < s.size) e.putString(keys[i], s[i].activityInfo.packageName)
                     e.apply()
                 }
-                setupUI()
+                if (isCollageMode) updateViewVisibility() else setupUI()
             }
         }
     }
@@ -164,12 +238,17 @@ class MainActivity : AppCompatActivity() {
             catApps.map { AppListItem.App(it) } + catLinks.map { AppListItem.Link(it) }
         } else null
 
-        animateTransition {
+        if (isCollageMode) {
             currentCategoryMode = newCatId
-            if (newCatId != null && newCatId != -2) {
-                applyCategoryItemsToWedges(items ?: emptyList())
-            } else {
-                setupUI()
+            updateViewVisibility()
+        } else {
+            animateTransition {
+                currentCategoryMode = newCatId
+                if (newCatId != null && newCatId != -2) {
+                    applyCategoryItemsToWedges(items ?: emptyList())
+                } else {
+                    setupUI()
+                }
             }
         }
     }
@@ -198,11 +277,10 @@ class MainActivity : AppCompatActivity() {
         catDisplay?.text = if (currentCategoryMode != null) getCatName(currentCategoryMode!!) else ""
         
         val base = listOf(-120f, -60f, 0f, 60f, 120f, 180f)
-        val colors = listOf(Color.parseColor("#660000FF"), Color.parseColor("#66FF0000"), Color.parseColor("#6600FF00"))
         
         for (i in wedges.indices) {
             val w = wedges[i]; val k = keys[i]
-            w.wedgeColor = if (i == 5) Color.BLACK else colors[i % 3]
+            w.wedgeColor = Color.BLACK
             w.iconRadiusFraction = 0.7f
             w.startAngle = base[i % 6] + 30f
             
@@ -231,11 +309,9 @@ class MainActivity : AppCompatActivity() {
         val catDisplay = findViewById<TextView>(R.id.category_display_name)
         catDisplay?.text = if (currentCategoryMode != null) getCatName(currentCategoryMode!!) else ""
         
-        val colors = listOf(Color.parseColor("#660000FF"), Color.parseColor("#66FF0000"), Color.parseColor("#6600FF00"))
-        
         for (i in wedges.indices) {
             val w = wedges[i]
-            w.wedgeColor = if (i == 5) Color.BLACK else colors[i % 3]
+            w.wedgeColor = Color.BLACK
             
             if (i == 5) {
                 w.setImageDrawable(null)
@@ -287,10 +363,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun showAppsList(filter: Int? = null, mgmt: Boolean = false) {
         if (filter == -2) {
-            // Rileggi le app dal sistema solo quando si preme "Tutte"
             lifecycleScope.launch(Dispatchers.Default) {
                 allApps = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
-                // Aggiorna anche la cache delle categorie basandosi sulla rilettura
                 catPrefs.all.forEach { (k, v) -> if (k.startsWith("app_cat_") && v is Int) appCategoryCache[k.substring(8)] = v }
                 
                 withContext(Dispatchers.Main) {
@@ -407,7 +481,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun moveLinkDialog(url: String, cb: () -> Unit) {
         val cats = listOf(0,1,2,3,4,5,6,7,-1, 999)
-        AlertDialog.Builder(this).setTitle("Sposta Link").setItems(cats.map { getCatName(it) }.toTypedArray()) { _, w -> catPrefs.edit().putInt("link_cat_$url", cats[w]).apply(); cb() }.show()
+        AlertDialog.Builder(this).setTitle("Sposta Link").setItems(cats.map { getCatName(it) }.toTypedArray()) { _, w -> 
+            catPrefs.edit().putInt("link_cat_$url", cats[w]).apply()
+            cb() 
+        }.show()
     }
 
     private fun launch(pkg: String) {
@@ -434,13 +511,14 @@ class MainActivity : AppCompatActivity() {
     private fun getLinkCat(url: String) = catPrefs.getInt("link_cat_$url", 999)
 
     sealed class AppListItem { 
+        object Special : AppListItem()
         data class Header(val title: String, val id: Int) : AppListItem()
         data class App(val res: ResolveInfo) : AppListItem()
         data class Link(val url: String) : AppListItem()
     }
 
     inner class AppsAdapter(private val list: List<AppListItem>, private val onClick: (AppListItem) -> Unit, private val onRefresh: () -> Unit) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-        override fun getItemViewType(p: Int) = when(list[p]) { is AppListItem.Header -> 0; is AppListItem.App -> 1; is AppListItem.Link -> 2 }
+        override fun getItemViewType(p: Int) = when(list[p]) { is AppListItem.Header -> 0; is AppListItem.App -> 1; is AppListItem.Link -> 2; is AppListItem.Special -> 3 }
         override fun onCreateViewHolder(parent: ViewGroup, t: Int) = when(t) {
             0 -> HeaderVH(LayoutInflater.from(parent.context).inflate(R.layout.header_item, parent, false))
             else -> AppVH(LayoutInflater.from(parent.context).inflate(R.layout.app_item, parent, false))
