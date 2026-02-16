@@ -95,7 +95,7 @@ class MainActivity : AppCompatActivity() {
         
         if (isCollageMode) {
             wedges.forEach { it.visibility = View.GONE }
-            catDisplay?.visibility = View.GONE
+            catDisplay?.visibility = View.VISIBLE
             drawingView?.visibility = View.VISIBLE
             updateCollageData()
         } else {
@@ -112,6 +112,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateCollageData() {
         val drawingView = findViewById<DrawingView>(R.id.drawing_view) ?: return
+        val catDisplay = findViewById<TextView>(R.id.category_display_name)
+        catDisplay?.text = if (currentCategoryMode != null) getCatName(currentCategoryMode!!) else ""
+
         val items = mutableListOf<AppListItem>()
         items.add(AppListItem.Special) // La prima icona è speciale (nera)
 

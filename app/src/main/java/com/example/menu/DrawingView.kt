@@ -24,10 +24,22 @@ class DrawingView @JvmOverloads constructor(
     private var items: List<MainActivity.AppListItem> = emptyList()
     private val rects = mutableListOf<RectF>()
     private var onItemClick: ((MainActivity.AppListItem) -> Unit)? = null
+    
+    // Memorizziamo quali indici devono essere grandi per coerenza durante il disegno
+    private val largeIndices = mutableSetOf<Int>()
 
     fun setData(items: List<MainActivity.AppListItem>, onItemClick: (MainActivity.AppListItem) -> Unit) {
-        this.items = items.take(12)
+        this.items = items
         this.onItemClick = onItemClick
+        
+        // Scegliamo 5 indici casuali da ingrandire (oltre al 4 che è fisso)
+        largeIndices.clear()
+        largeIndices.add(4)
+        if (items.size > 1) {
+            val available = (1 until items.size).filter { it != 4 }.shuffled()
+            largeIndices.addAll(available.take(5))
+        }
+        
         generateRects()
         invalidate()
     }
@@ -36,30 +48,82 @@ class DrawingView @JvmOverloads constructor(
         rects.clear()
         if (width == 0 || height == 0) return
 
+        if (width > height) {
+            generateLandscapeRects()
+        } else {
+            generatePortraitRects()
+        }
+    }
+
+    private fun generatePortraitRects() {
         val size = Math.min(width, height).toFloat()
         val startX = (width - size) / 2
         val startY = (height - size) / 2
-        val c = size / 4 // base della griglia 4x4
+        val c = size / 4
 
-        // 1. Prima riga (4 rettangoli)
-        rects.add(RectF(startX, startY, startX + c, startY + c))
-        rects.add(RectF(startX + c, startY, startX + 2*c, startY + c))
-        rects.add(RectF(startX + 2*c, startY, startX + 3*c, startY + c))
-        rects.add(RectF(startX + 3*c, startY, startX + 4*c, startY + c))
+        val pRects = arrayOfNulls<RectF>(12)
+        pRects[0] = RectF(startX, startY, startX + c, startY + c)
+        pRects[1] = RectF(startX + c, startY, startX + 2*c, startY + c)
+        pRects[2] = RectF(startX + 2*c, startY, startX + 3*c, startY + c)
+        pRects[3] = RectF(startX + 3*c, startY, startX + 4*c, startY + c)
+        pRects[4] = RectF(startX + c, startY + c, startX + 3*c, startY + 3*c) // Quinta GRANDE
+        pRects[5] = RectF(startX, startY + c, startX + c, startY + 2*c)
+        pRects[6] = RectF(startX + 3*c, startY + c, startX + 4*c, startY + 2*c)
+        pRects[7] = RectF(startX, startY + 2*c, startX + c, startY + 3*c)
+        pRects[8] = RectF(startX + 3*c, startY + 2*c, startX + 4*c, startY + 3*c)
+        pRects[9] = RectF(startX, startY + 3*c, startX + c, startY + 4*c)
+        pRects[10] = RectF(startX + c, startY + 3*c, startX + 2.5f*c, startY + 4*c)
+        pRects[11] = RectF(startX + 2.5f*c, startY + 3*c, startX + 4*c, startY + 4*c)
+        
+        for (r in pRects) if (r != null) rects.add(r)
+    }
 
-        // 2. Quinta icona (indice 4) - GRANDE QUADRATO CENTRALE 2x2
-        rects.add(RectF(startX + c, startY + c, startX + 3*c, startY + 3*c))
+    private fun generateLandscapeRects() {
+        val rows = 4
+        val c = height.toFloat() / rows
+        val cols = (width / c).toInt()
+        val startX = (width - cols * c) / 2
+        
+        val occupied = Array(rows) { BooleanArray(cols) { false } }
+        val tempRectsMap = mutableMapOf<Int, RectF>()
+        
+        // Funzione per trovare il primo buco libero
+        fun findNextFree(): Pair<Int, Int>? {
+            for (r in 0 until rows) {
+                for (col in 0 until cols) {
+                    if (!occupied[r][col]) return r to col
+                }
+            }
+            return null
+        }
 
-        // 3. Icone laterali al quadrato centrale
-        rects.add(RectF(startX, startY + c, startX + c, startY + 2*c))       // Sinistra 1
-        rects.add(RectF(startX + 3*c, startY + c, startX + 4*c, startY + 2*c)) // Destra 1
-        rects.add(RectF(startX, startY + 2*c, startX + c, startY + 3*c))       // Sinistra 2
-        rects.add(RectF(startX + 3*c, startY + 2*c, startX + 4*c, startY + 3*c)) // Destra 2
-
-        // 4. Ultima riga (3 rettangoli per arrivare a 12 totali, uno più largo)
-        rects.add(RectF(startX, startY + 3*c, startX + c, startY + 4*c))
-        rects.add(RectF(startX + c, startY + 3*c, startX + 2.5f*c, startY + 4*c))
-        rects.add(RectF(startX + 2.5f*c, startY + 3*c, startX + 4*c, startY + 4*c))
+        // Posizioniamo gli elementi in ordine
+        for (i in items.indices) {
+            val free = findNextFree() ?: break
+            val r = free.first
+            val col = free.second
+            
+            if (largeIndices.contains(i) && r + 1 < rows && col + 1 < cols &&
+                !occupied[r+1][col] && !occupied[r][col+1] && !occupied[r+1][col+1]) {
+                // Posiziona come 2x2
+                val rect = RectF(startX + col * c, r * c, startX + (col + 2) * c, (r + 2) * c)
+                tempRectsMap[i] = rect
+                occupied[r][col] = true
+                occupied[r+1][col] = true
+                occupied[r][col+1] = true
+                occupied[r+1][col+1] = true
+            } else {
+                // Posiziona come 1x1
+                val rect = RectF(startX + col * c, r * c, startX + (col + 1) * c, (r + 1) * c)
+                tempRectsMap[i] = rect
+                occupied[r][col] = true
+            }
+        }
+        
+        // Trasferiamo i rettangoli calcolati nella lista finale ordinata
+        for (i in 0 until items.size) {
+            tempRectsMap[i]?.let { rects.add(it) }
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -69,8 +133,7 @@ class DrawingView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        for (i in 0 until 12) {
-            if (i >= rects.size) break
+        for (i in rects.indices) {
             val rect = rects[i]
             paint.color = Color.BLACK
             canvas.drawRect(rect, paint)
@@ -83,11 +146,7 @@ class DrawingView @JvmOverloads constructor(
                     canvas.clipRect(rect)
                     val iconW = it.intrinsicWidth.takeIf { it > 0 } ?: 100
                     val iconH = it.intrinsicHeight.takeIf { it > 0 } ?: 100
-                    
-                    // Applichiamo uno zoom extra (1.4f) per eliminare i bordi vuoti tipici delle icone
-                    val baseScale = Math.max(rect.width() / iconW, rect.height() / iconH)
-                    val scale = baseScale * 1.4f
-
+                    val scale = Math.max(rect.width() / iconW, rect.height() / iconH) * 1.4f
                     val drawW = iconW * scale
                     val drawH = iconH * scale
                     val left = rect.centerX() - drawW / 2
@@ -116,7 +175,8 @@ class DrawingView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_UP) {
-            for (i in 0 until rects.size.coerceAtMost(items.size)) {
+            val limit = Math.min(rects.size, items.size)
+            for (i in 0 until limit) {
                 if (rects[i].contains(event.x, event.y)) {
                     onItemClick?.invoke(items[i])
                     return true
