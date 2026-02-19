@@ -25,14 +25,15 @@ class DrawingView @JvmOverloads constructor(
     private val rects = mutableListOf<RectF>()
     private var onItemClick: ((MainActivity.AppListItem) -> Unit)? = null
     
-    // Memorizziamo quali indici devono essere grandi per coerenza durante il disegno
+    private var currentBgColor = Color.BLACK
+    private var currentFgColor = Color.WHITE
+
     private val largeIndices = mutableSetOf<Int>()
 
     fun setData(items: List<MainActivity.AppListItem>, onItemClick: (MainActivity.AppListItem) -> Unit) {
         this.items = items
         this.onItemClick = onItemClick
         
-        // Scegliamo 5 indici casuali da ingrandire (oltre al 4 che è fisso)
         largeIndices.clear()
         largeIndices.add(4)
         if (items.size > 1) {
@@ -41,6 +42,13 @@ class DrawingView @JvmOverloads constructor(
         }
         
         generateRects()
+        invalidate()
+    }
+
+    fun setColors(bgColor: Int, fgColor: Int) {
+        currentBgColor = bgColor
+        currentFgColor = fgColor
+        borderPaint.color = fgColor
         invalidate()
     }
 
@@ -66,7 +74,7 @@ class DrawingView @JvmOverloads constructor(
         pRects[1] = RectF(startX + c, startY, startX + 2*c, startY + c)
         pRects[2] = RectF(startX + 2*c, startY, startX + 3*c, startY + c)
         pRects[3] = RectF(startX + 3*c, startY, startX + 4*c, startY + c)
-        pRects[4] = RectF(startX + c, startY + c, startX + 3*c, startY + 3*c) // Quinta GRANDE
+        pRects[4] = RectF(startX + c, startY + c, startX + 3*c, startY + 3*c)
         pRects[5] = RectF(startX, startY + c, startX + c, startY + 2*c)
         pRects[6] = RectF(startX + 3*c, startY + c, startX + 4*c, startY + 2*c)
         pRects[7] = RectF(startX, startY + 2*c, startX + c, startY + 3*c)
@@ -87,7 +95,6 @@ class DrawingView @JvmOverloads constructor(
         val occupied = Array(rows) { BooleanArray(cols) { false } }
         val tempRectsMap = mutableMapOf<Int, RectF>()
         
-        // Funzione per trovare il primo buco libero
         fun findNextFree(): Pair<Int, Int>? {
             for (r in 0 until rows) {
                 for (col in 0 until cols) {
@@ -97,7 +104,6 @@ class DrawingView @JvmOverloads constructor(
             return null
         }
 
-        // Posizioniamo gli elementi in ordine
         for (i in items.indices) {
             val free = findNextFree() ?: break
             val r = free.first
@@ -105,7 +111,6 @@ class DrawingView @JvmOverloads constructor(
             
             if (largeIndices.contains(i) && r + 1 < rows && col + 1 < cols &&
                 !occupied[r+1][col] && !occupied[r][col+1] && !occupied[r+1][col+1]) {
-                // Posiziona come 2x2
                 val rect = RectF(startX + col * c, r * c, startX + (col + 2) * c, (r + 2) * c)
                 tempRectsMap[i] = rect
                 occupied[r][col] = true
@@ -113,14 +118,12 @@ class DrawingView @JvmOverloads constructor(
                 occupied[r][col+1] = true
                 occupied[r+1][col+1] = true
             } else {
-                // Posiziona come 1x1
                 val rect = RectF(startX + col * c, r * c, startX + (col + 1) * c, (r + 1) * c)
                 tempRectsMap[i] = rect
                 occupied[r][col] = true
             }
         }
         
-        // Trasferiamo i rettangoli calcolati nella lista finale ordinata
         for (i in 0 until items.size) {
             tempRectsMap[i]?.let { rects.add(it) }
         }
@@ -135,7 +138,7 @@ class DrawingView @JvmOverloads constructor(
         super.onDraw(canvas)
         for (i in rects.indices) {
             val rect = rects[i]
-            paint.color = Color.BLACK
+            paint.color = currentBgColor
             canvas.drawRect(rect, paint)
 
             if (i < items.size) {

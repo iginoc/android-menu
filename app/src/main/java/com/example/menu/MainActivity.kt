@@ -4,6 +4,7 @@ import android.animation.*
 import android.app.*
 import android.content.*
 import android.content.pm.*
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.net.Uri
@@ -15,7 +16,7 @@ import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -62,13 +63,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
+        val themePrefs = getSharedPreferences("theme_prefs", MODE_PRIVATE)
+        val savedMode = themePrefs.getInt("night_mode", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+        AppCompatDelegate.setDefaultNightMode(savedMode)
+        
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+        
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, i ->
             val s = i.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(s.left, s.top, s.right, s.bottom); i
         }
+        
         prefs = getSharedPreferences("app_shortcuts", MODE_PRIVATE)
         catPrefs = getSharedPreferences("custom_categories", MODE_PRIVATE)
         linkPrefs = getSharedPreferences("links_storage", MODE_PRIVATE)
@@ -94,8 +101,8 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
-        findViewById<ImageView>(R.id.btn_rotate).setOnClickListener { toggleAutoRotation() }
-        updateRotateButtonState()
+        findViewById<ImageView>(R.id.btn_rotate)?.setOnClickListener { toggleAutoRotation() }
+        findViewById<ImageView>(R.id.btn_night_mode)?.setOnClickListener { toggleNightMode() }
         
         if (savedInstanceState == null) {
             handleSharedIntent(intent)
@@ -103,6 +110,45 @@ class MainActivity : AppCompatActivity() {
         loadData()
         checkLauncher()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        applyThemeColors()
+    }
+
+    private fun toggleNightMode() {
+        val uiManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+        val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        
+        val newAppMode = if (isNight) AppCompatDelegate.MODE_NIGHT_NO else AppCompatDelegate.MODE_NIGHT_YES
+        val newSystemMode = if (isNight) UiModeManager.MODE_NIGHT_NO else UiModeManager.MODE_NIGHT_YES
+
+        try { uiManager.nightMode = newSystemMode } catch (e: Exception) {}
+        getSharedPreferences("theme_prefs", MODE_PRIVATE).edit().putInt("night_mode", newAppMode).apply()
+        AppCompatDelegate.setDefaultNightMode(newAppMode)
+    }
+
+    private fun applyThemeColors() {
+        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val bgColor = if (isNightMode) Color.BLACK else Color.WHITE
+        val fgColor = if (isNightMode) Color.WHITE else Color.BLACK
+        
+        findViewById<View>(R.id.main)?.setBackgroundColor(bgColor)
+        
+        findViewById<TextClock>(R.id.clock)?.setTextColor(fgColor)
+        findViewById<TextView>(R.id.category_display_name)?.setTextColor(fgColor)
+        
+        findViewById<ImageView>(R.id.btn_rotate)?.imageTintList = android.content.res.ColorStateList.valueOf(fgColor)
+        findViewById<ImageView>(R.id.btn_night_mode)?.imageTintList = android.content.res.ColorStateList.valueOf(fgColor)
+        
+        findViewById<BatteryView>(R.id.battery_view)?.setColors(fgColor)
+        
+        val borderColor = Color.BLACK
+        
+        findViewById<DrawingView>(R.id.drawing_view)?.setColors(bgColor, borderColor)
+        
+        for (w in wedges) {
+            w.wedgeColor = bgColor
+            w.borderColor = borderColor
+        }
+        updateRotateButtonState()
     }
 
     private fun toggleAutoRotation() {
@@ -124,14 +170,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateRotateButtonState() {
-        val btn = findViewById<ImageView>(R.id.btn_rotate)
+        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fgColor = if (isNightMode) Color.WHITE else Color.BLACK
+        val btn = findViewById<ImageView>(R.id.btn_rotate) ?: return
         val isAutoRotateOn = Settings.System.getInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
-        btn.setColorFilter(if (isAutoRotateOn) Color.WHITE else Color.GRAY)
+        btn.setColorFilter(if (isAutoRotateOn) fgColor else Color.GRAY)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(batteryReceiver)
+        try { unregisterReceiver(batteryReceiver) } catch (e: Exception) {}
     }
 
     private fun updateViewVisibility() {
@@ -153,6 +201,7 @@ class MainActivity : AppCompatActivity() {
                 setupUI()
             }
         }
+        applyThemeColors()
     }
 
     private fun updateCollageData() {
@@ -161,7 +210,7 @@ class MainActivity : AppCompatActivity() {
         catDisplay?.text = if (currentCategoryMode != null) getCatName(currentCategoryMode!!) else ""
 
         val items = mutableListOf<AppListItem>()
-        items.add(AppListItem.Special) // La prima icona è speciale (nera)
+        items.add(AppListItem.Special)
 
         if (currentCategoryMode != null && currentCategoryMode != -2) {
             val catApps = allApps.filter { getCat(it.activityInfo.applicationInfo) == currentCategoryMode }
@@ -274,6 +323,7 @@ class MainActivity : AppCompatActivity() {
                     e.apply()
                 }
                 if (isCollageMode) updateViewVisibility() else setupUI()
+                applyThemeColors()
             }
         }
     }
@@ -297,6 +347,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     setupUI()
                 }
+                applyThemeColors()
             }
         }
     }

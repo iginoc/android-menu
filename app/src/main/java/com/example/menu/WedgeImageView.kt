@@ -20,6 +20,12 @@ class WedgeImageView @JvmOverloads constructor(
         set(value) { field = value; invalidate() }
     var wedgeColor: Int = Color.TRANSPARENT
         set(value) { field = value; invalidate() }
+    var borderColor: Int = Color.BLACK
+        set(value) { 
+            field = value
+            borderPaint.color = value
+            invalidate() 
+        }
 
     private val clipPath = Path()
     private val rect = RectF()
@@ -59,7 +65,6 @@ class WedgeImageView @JvmOverloads constructor(
         val offsetY = (Math.sin(midAngleRad) * distance).toFloat()
         
         canvas.translate(offsetX, offsetY)
-        // Ridotto lo zoom dell'icona da 0.7f a 0.5f
         canvas.scale(0.5f, 0.5f, centerX, centerY)
         super.onDraw(canvas)
         canvas.restore()

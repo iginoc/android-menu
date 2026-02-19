@@ -25,26 +25,26 @@ class BatteryView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setColors(fgColor: Int) {
+        borderPaint.color = fgColor
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val w = width.toFloat()
         val h = height.toFloat()
         
-        // Disegno verticale della batteria
-        // Margini per il bordo
         val padding = borderPaint.strokeWidth
         val tipHeight = h * 0.1f
         
-        // Corpo batteria
         bodyRect.set(padding, tipHeight + padding, w - padding, h - padding)
         canvas.drawRect(bodyRect, borderPaint)
         
-        // Punta batteria
         val tipWidth = w * 0.4f
         tipRect.set(w / 2 - tipWidth / 2, padding, w / 2 + tipWidth / 2, tipHeight + padding)
         canvas.drawRect(tipRect, borderPaint)
         
-        // Livello carica (Verde)
         if (level > 0) {
             paint.color = Color.GREEN
             paint.style = Paint.Style.FILL
