@@ -10,6 +10,16 @@
 
     <TextClock android:id="@+id/clock" android:layout_width="wrap_content" android:layout_height="wrap_content" android:format12Hour="HH:mm" android:format24Hour="HH:mm" android:textColor="@android:color/white" android:textSize="100sp" android:textStyle="bold" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
 
+    <com.example.menu.BatteryView
+        android:id="@+id/battery_view"
+        android:layout_width="30dp"
+        android:layout_height="0dp"
+        android:layout_marginEnd="20dp"
+        app:layout_constraintDimensionRatio="1:2"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/clock"
+        app:layout_constraintBottom_toBottomOf="@+id/clock"/>
+
     <com.example.menu.DrawingView
         android:id="@+id/drawing_view"
         android:layout_width="0dp"
@@ -45,6 +55,17 @@
         android:textSize="24sp"
         android:textStyle="bold"
         android:layout_marginBottom="20dp"
+        app:layout_constraintBottom_toTopOf="@+id/btn_rotate"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ImageView
+        android:id="@+id/btn_rotate"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginBottom="10dp"
+        android:src="@android:drawable/ic_menu_rotate"
+        app:tint="@android:color/white"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

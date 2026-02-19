@@ -15,6 +15,7 @@ import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -39,6 +40,17 @@ class MainActivity : AppCompatActivity() {
     
     private val appCategoryCache = mutableMapOf<String, Int>()
     internal val iconCache = mutableMapOf<String, Drawable>()
+
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+            if (level != -1 && scale != -1) {
+                val batteryPct = (level * 100 / scale.toFloat()).toInt()
+                findViewById<BatteryView>(R.id.battery_view)?.setBatteryLevel(batteryPct)
+            }
+        }
+    }
 
     private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         uri?.let { exportToFile(it) }
@@ -81,12 +93,45 @@ class MainActivity : AppCompatActivity() {
             updateViewVisibility()
             true
         }
+
+        findViewById<ImageView>(R.id.btn_rotate).setOnClickListener { toggleAutoRotation() }
+        updateRotateButtonState()
         
         if (savedInstanceState == null) {
             handleSharedIntent(intent)
         }
         loadData()
         checkLauncher()
+        registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+    }
+
+    private fun toggleAutoRotation() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (Settings.System.canWrite(this)) {
+                val isAutoRotate = Settings.System.getInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
+                Settings.System.putInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, if (isAutoRotate) 0 else 1)
+                updateRotateButtonState()
+            } else {
+                val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
+                intent.data = Uri.parse("package:$packageName")
+                startActivity(intent)
+            }
+        } else {
+            val isAutoRotate = Settings.System.getInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
+            Settings.System.putInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, if (isAutoRotate) 0 else 1)
+            updateRotateButtonState()
+        }
+    }
+
+    private fun updateRotateButtonState() {
+        val btn = findViewById<ImageView>(R.id.btn_rotate)
+        val isAutoRotateOn = Settings.System.getInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
+        btn.setColorFilter(if (isAutoRotateOn) Color.WHITE else Color.GRAY)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(batteryReceiver)
     }
 
     private fun updateViewVisibility() {
@@ -188,7 +233,7 @@ class MainActivity : AppCompatActivity() {
             val formattedUrl = if (!urlStr.startsWith("http")) "https://$urlStr" else urlStr
             val connection = (URL(formattedUrl).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 5000; readTimeout = 5000
-                setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
             }
             val html = connection.inputStream.bufferedReader().use { it.readText() }
             val match = Regex("<title>(.*?)</title>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)).find(html)
