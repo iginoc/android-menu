@@ -17,6 +17,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -44,12 +45,23 @@ class MainActivity : AppCompatActivity() {
 
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-            val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-            if (level != -1 && scale != -1) {
-                val batteryPct = (level * 100 / scale.toFloat()).toInt()
-                findViewById<BatteryView>(R.id.battery_view)?.setBatteryLevel(batteryPct)
-            }
+            updateBatteryUI(intent)
+        }
+    }
+
+    private fun updateBatteryUI(intent: Intent?) {
+        val batteryView = findViewById<BatteryView>(R.id.battery_view) ?: return
+        if (intent == null) return
+        
+        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+        val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || 
+                         status == BatteryManager.BATTERY_STATUS_FULL
+        
+        if (level != -1 && scale != -1) {
+            val batteryPct = (level * 100 / scale.toFloat()).toInt()
+            batteryView.setBatteryStatus(batteryPct, isCharging)
         }
     }
 
@@ -71,6 +83,11 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
         
+        // Lettura immediata stato batteria
+        val intentFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val batteryStatus = registerReceiver(batteryReceiver, intentFilter)
+        updateBatteryUI(batteryStatus)
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, i ->
             val s = i.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(s.left, s.top, s.right, s.bottom); i
@@ -103,24 +120,37 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<ImageView>(R.id.btn_rotate)?.setOnClickListener { toggleAutoRotation() }
         findViewById<ImageView>(R.id.btn_night_mode)?.setOnClickListener { toggleNightMode() }
+        findViewById<ImageView>(R.id.btn_wireless_debug)?.setOnClickListener { openWirelessDebug() }
         
         if (savedInstanceState == null) {
             handleSharedIntent(intent)
         }
         loadData()
         checkLauncher()
-        registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         applyThemeColors()
     }
 
-    private fun toggleNightMode() {
-        val uiManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-        val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        
-        val newAppMode = if (isNight) AppCompatDelegate.MODE_NIGHT_NO else AppCompatDelegate.MODE_NIGHT_YES
-        val newSystemMode = if (isNight) UiModeManager.MODE_NIGHT_NO else UiModeManager.MODE_NIGHT_YES
+    private fun openWirelessDebug() {
+        try {
+            val intent = Intent("android.settings.WIFI_ADB_SETTINGS")
+            startActivity(intent)
+        } catch (e: Exception) {
+            try {
+                val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                startActivity(intent)
+            } catch (e2: Exception) {
+                try {
+                    val intent = Intent(Settings.ACTION_SETTINGS)
+                    startActivity(intent)
+                } catch (e3: Exception) {}
+            }
+        }
+    }
 
-        try { uiManager.nightMode = newSystemMode } catch (e: Exception) {}
+    private fun toggleNightMode() {
+        val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val newAppMode = if (isNight) AppCompatDelegate.MODE_NIGHT_NO else AppCompatDelegate.MODE_NIGHT_YES
+
         getSharedPreferences("theme_prefs", MODE_PRIVATE).edit().putInt("night_mode", newAppMode).apply()
         AppCompatDelegate.setDefaultNightMode(newAppMode)
     }
@@ -137,6 +167,7 @@ class MainActivity : AppCompatActivity() {
         
         findViewById<ImageView>(R.id.btn_rotate)?.imageTintList = android.content.res.ColorStateList.valueOf(fgColor)
         findViewById<ImageView>(R.id.btn_night_mode)?.imageTintList = android.content.res.ColorStateList.valueOf(fgColor)
+        findViewById<ImageView>(R.id.btn_wireless_debug)?.imageTintList = android.content.res.ColorStateList.valueOf(fgColor)
         
         findViewById<BatteryView>(R.id.battery_view)?.setColors(fgColor)
         
@@ -152,20 +183,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleAutoRotation() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (Settings.System.canWrite(this)) {
-                val isAutoRotate = Settings.System.getInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
-                Settings.System.putInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, if (isAutoRotate) 0 else 1)
-                updateRotateButtonState()
-            } else {
-                val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
-                intent.data = Uri.parse("package:$packageName")
-                startActivity(intent)
-            }
-        } else {
+        if (Settings.System.canWrite(this)) {
             val isAutoRotate = Settings.System.getInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
             Settings.System.putInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, if (isAutoRotate) 0 else 1)
             updateRotateButtonState()
+        } else {
+            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
+            intent.data = Uri.parse("package:$packageName")
+            startActivity(intent)
         }
     }
 
@@ -243,7 +268,7 @@ class MainActivity : AppCompatActivity() {
                             prepareAndAnimate(newCat)
                         } catch (e: Exception) { showAppsList() }
                     } else {
-                        launch(item.res.activityInfo.packageName)
+                        launchApp(item.res.activityInfo.packageName)
                     }
                 }
                 is AppListItem.Link -> openLink(item.url)
@@ -358,8 +383,8 @@ class MainActivity : AppCompatActivity() {
             interpolator = LinearInterpolator()
             addUpdateListener { anim ->
                 val rotation = anim.animatedValue as Float
-                for (i in 0..5) wedges[i].rotation = rotation
-                for (i in 6..11) wedges[i].rotation = -rotation
+                for (i in 0..5) if (i < wedges.size) wedges[i].rotation = rotation
+                for (i in 6..11) if (i < wedges.size) wedges[i].rotation = -rotation
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
@@ -389,7 +414,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 val pkg = prefs.getString(k, null)
                 val icon = if (pkg != null) iconCache[pkg] ?: try { packageManager.getApplicationIcon(pkg) } catch (e: Exception) { null } else null
-                w.setImageDrawable(icon ?: if (pkg != null) resources.getDrawable(R.drawable.icona, null) else null)
+                w.setImageDrawable(icon ?: if (pkg != null) ContextCompat.getDrawable(this, R.drawable.icona) else null)
                 
                 w.setOnClickListener { 
                     if (pkg != null) {
@@ -421,7 +446,7 @@ class MainActivity : AppCompatActivity() {
                     when (val item = items[itemIdx]) {
                         is AppListItem.App -> {
                             w.setImageDrawable(resToIcon(item.res))
-                            w.setOnClickListener { launch(item.res.activityInfo.packageName) }
+                            w.setOnClickListener { launchApp(item.res.activityInfo.packageName) }
                         }
                         is AppListItem.Link -> {
                             w.setImageResource(android.R.drawable.ic_menu_share)
@@ -448,7 +473,7 @@ class MainActivity : AppCompatActivity() {
                 val pkg = item.res.activityInfo.packageName
                 prefs.edit().putString(k, pkg).apply()
                 val icon = resToIcon(item.res)
-                wedges[idx].setImageDrawable(icon)
+                if (idx < wedges.size) wedges[idx].setImageDrawable(icon)
                 d.dismiss()
             }
         }, {})
@@ -500,7 +525,7 @@ class MainActivity : AppCompatActivity() {
         
         rv.adapter = AppsAdapter(items, { item ->
             when (item) {
-                is AppListItem.App -> if (mgmt) moveDialog(item.res) { d.dismiss(); showAppsList(filter, true) } else { launch(item.res.activityInfo.packageName); d.dismiss() }
+                is AppListItem.App -> if (mgmt) moveDialog(item.res) { d.dismiss(); showAppsList(filter, true) } else { this@MainActivity.launchApp(item.res.activityInfo.packageName); d.dismiss() }
                 is AppListItem.Link -> if (mgmt) moveLinkDialog(item.url) { d.dismiss(); showAppsList(filter, true) } else { openLink(item.url); d.dismiss() }
                 else -> {}
             }
@@ -586,7 +611,7 @@ class MainActivity : AppCompatActivity() {
         }.show()
     }
 
-    private fun launch(pkg: String) {
+    private fun launchApp(pkg: String) {
         packageManager.getLaunchIntentForPackage(pkg)?.let { try { startActivity(it); finishAndRemoveTask() } catch (e: Exception) {} }
     }
 
@@ -629,7 +654,7 @@ class MainActivity : AppCompatActivity() {
                 if (i is AppListItem.App) {
                     h.name.text = i.res.loadLabel(packageManager); h.icon.setImageDrawable(resToIcon(i.res)); 
                     h.itemView.setOnClickListener { onClick(i) }
-                    h.itemView.setOnLongClickListener { launch(i.res.activityInfo.packageName); true }
+                    h.itemView.setOnLongClickListener { launchApp(i.res.activityInfo.packageName); true }
                 } else if (i is AppListItem.Link) {
                     h.name.text = linkPrefs.getString("title_${i.url}", i.url); h.icon.setImageResource(android.R.drawable.ic_menu_share); h.itemView.setOnClickListener { onClick(i) }
                     h.itemView.setOnLongClickListener {

@@ -61,7 +61,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Cerchio SINISTRA (Wedges 7-12) -->
+    <!-- Spicchi Orizzontale -->
     <com.example.menu.WedgeImageView android:id="@+id/wedge_7" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toStartOf="@+id/guideline_v" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_8" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toStartOf="@+id/guideline_v" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_9" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toStartOf="@+id/guideline_v" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
@@ -69,13 +69,23 @@
     <com.example.menu.WedgeImageView android:id="@+id/wedge_11" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toStartOf="@+id/guideline_v" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_12" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toStartOf="@+id/guideline_v" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
 
-    <!-- Cerchio DESTRA (Wedges 1-6) -->
     <com.example.menu.WedgeImageView android:id="@+id/wedge_1" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toEndOf="@+id/guideline_v" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_2" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toEndOf="@+id/guideline_v" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_3" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toEndOf="@+id/guideline_v" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_4" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toEndOf="@+id/guideline_v" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_5" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toEndOf="@+id/guideline_v" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_6" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintWidth_percent="0.4" app:layout_constraintDimensionRatio="1:1" app:layout_constraintStart_toEndOf="@+id/guideline_v" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" />
+
+    <ImageView
+        android:id="@+id/btn_wireless_debug"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginBottom="10dp"
+        android:layout_marginEnd="20dp"
+        android:src="@drawable/ic_adb_wifi"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/btn_rotate"
+        android:contentDescription="Wireless Debug" />
 
     <ImageView
         android:id="@+id/btn_rotate"

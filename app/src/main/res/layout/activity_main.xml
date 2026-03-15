@@ -13,12 +13,11 @@
     <com.example.menu.BatteryView
         android:id="@+id/battery_view"
         android:layout_width="30dp"
-        android:layout_height="0dp"
+        android:layout_height="60dp"
         android:layout_marginEnd="20dp"
-        app:layout_constraintDimensionRatio="1:2"
+        android:layout_marginBottom="10dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/clock"
-        app:layout_constraintBottom_toBottomOf="@+id/clock"/>
+        app:layout_constraintBottom_toBottomOf="parent"/>
 
     <com.example.menu.DrawingView
         android:id="@+id/drawing_view"
@@ -31,7 +30,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Il secondo cerchio (GRANDE) viene messo per PRIMO nel file XML così sta SOTTO -->
+    <!-- Spicchi -->
     <com.example.menu.WedgeImageView android:id="@+id/wedge_7" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintHeight_percent="0.6" app:layout_constraintDimensionRatio="1:1" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_8" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintHeight_percent="0.6" app:layout_constraintDimensionRatio="1:1" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_9" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintHeight_percent="0.6" app:layout_constraintDimensionRatio="1:1" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent" />
@@ -39,7 +38,6 @@
     <com.example.menu.WedgeImageView android:id="@+id/wedge_11" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintHeight_percent="0.6" app:layout_constraintDimensionRatio="1:1" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_12" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintHeight_percent="0.6" app:layout_constraintDimensionRatio="1:1" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Il primo cerchio (PICCOLO) viene messo DOPO nel file XML così sta SOPRA (primo piano) -->
     <com.example.menu.WedgeImageView android:id="@+id/wedge_1" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintHeight_percent="0.3" app:layout_constraintDimensionRatio="1:1" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_2" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintHeight_percent="0.3" app:layout_constraintDimensionRatio="1:1" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent" />
     <com.example.menu.WedgeImageView android:id="@+id/wedge_3" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintHeight_percent="0.3" app:layout_constraintDimensionRatio="1:1" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent" />
@@ -58,6 +56,17 @@
         app:layout_constraintBottom_toTopOf="@+id/btn_rotate"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
+
+    <ImageView
+        android:id="@+id/btn_wireless_debug"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginBottom="10dp"
+        android:layout_marginEnd="20dp"
+        android:src="@drawable/ic_adb_wifi"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/btn_rotate"
+        android:contentDescription="Wireless Debug" />
 
     <ImageView
         android:id="@+id/btn_rotate"
